@@ -83,7 +83,94 @@
         ])
       ]);
 
+      // TODO: determine intial state
+      this.state= null;
+      this.setState( State.Ready );
+      this.setLvaRow( null );
 
+      this._setupLvaSelection();
+    }
+
+    _setupLvaSelection() {
+      this.selectLvaButton.addEventListener('click', () => {
+        if( this.state !== State.Ready && this.state !== State.Selecting ) {
+          console.error('bad state for selecting', this.state);
+          return;
+        }
+
+        if( this.state === State.Selecting ) {
+          this.selectLvaButton.innerText= 'Select Course';
+          this.setState( State.Ready )
+          return;
+        }
+
+        this.setState( State.Selecting );
+        this.selectLvaButton.innerText= 'Stop selecting';
+      });
+
+      // Skip the <tr> inside the <thead> by starting with index 1
+      const rows= mainTable().rows;
+      for( let i= 1; i< rows.length; i++ ) {
+        const row= rows.item( i );
+        row.addEventListener('mouseenter', () => {
+          if( this.state === State.Selecting ) {
+            row.style.backgroundColor= 'red';
+          }
+        });
+        row.addEventListener('mouseleave', () => {
+          if( this.state === State.Selecting ) {
+            row.style.backgroundColor= null;
+          }
+        });
+        row.addEventListener('click', () => {
+          if( this.state === State.Selecting ) {
+            this.lvaField.value= row.innerText.split('\n')[0].trim();
+            row.style.backgroundColor= null;
+            this.selectLvaButton.innerText= 'Select Course';
+            this.setState( State.Ready );
+            this.setLvaRow( row );
+          }
+        });
+      }
+    }
+
+    _enableFields( enable ) {
+      this.lvaField.disabled= !enable;
+      this.timeField.disabled= !enable;
+      this.selectLvaButton.disabled= !enable;
+      this.startStopButton.disabled= !enable;
+    }
+
+    setState( state ) {
+      this.state= state;
+      this.stateField.innerText= state.text;
+      this.stateField.style.backgroundColor= state.color;
+
+      switch( this.state ) {
+        case State.Pending:
+          this._enableFields( false );
+          break;
+
+        case State.Selecting:
+          this._enableFields( false );
+          this.selectLvaButton.disabled= false;
+          break;
+
+        case State.Ready:
+          this._enableFields( true );
+          break;
+      }
+    }
+
+    setLvaRow( row ) {
+      if( this.lvaRow ) {
+        this.lvaRow.style.backgroundColor= null;
+      }
+
+      this.lvaRow= row;
+      if( this.lvaRow ) {
+        this.lvaRow.style.backgroundColor= 'blue';
+      }
     }
 
     insertBefore( otherElement ) {
