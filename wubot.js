@@ -55,6 +55,12 @@
     return element;
   }
 
+  const Color= {
+    ErrorBox: '#ff6969',
+    ActiveRow: '#90ee90',
+    HoveredRow: '#acf1cd'
+  };
+
   const State= {
     Ready: {text: 'Ready', color: 'lightgreen'},
     Error: {text: 'Error!', color: 'red'},
@@ -70,12 +76,18 @@
       this.selectLvaButton= createStyledElement('button', {}, ['Select Course']);
       this.startStopButton= createStyledElement('button', {}, ['Go!']);
 
-      this.errorField= createStyledElement('div', {border: '1px solid grey', fontStyle: 'italic', display: 'none'});
+      this.errorField= createStyledElement('div', {
+        border: '1px solid grey',
+        padding: '1rem',
+        fontStyle: 'italic',
+        display: 'none'
+      });
 
       this.root= createStyledElement('div', {
         display: 'flex',
         flexDirection: 'column',
-        gap: '1rem'
+        gap: '1rem',
+        margin: '2rem'
       }, [
         createStyledElement('div', {
           display: 'flex',
@@ -160,7 +172,7 @@
         const row= rows.item( i );
         row.addEventListener('mouseenter', () => {
           if( this.state === State.Selecting ) {
-            row.style.backgroundColor= 'red';
+            row.style.backgroundColor= Color.HoveredRow;
           }
         });
         row.addEventListener('mouseleave', () => {
@@ -227,13 +239,13 @@
 
       this.lvaRow= row;
       if( this.lvaRow ) {
-        this.lvaRow.style.backgroundColor= 'blue';
+        this.lvaRow.style.backgroundColor= Color.ActiveRow;
       }
     }
 
     _showError( msg= null ) {
       this._showMessage('Error: '+ msg);
-      this.errorField.style.backgroundColor= 'lightred';
+      this.errorField.style.backgroundColor= Color.ErrorBox;
     }
 
     _showMessage( msg= null ) {
