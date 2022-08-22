@@ -61,7 +61,7 @@
     constructor() {
       this.stateField= createStyledElement('div', {});
       this.lvaField= createStyledElement('input', {}, [], {type: 'text'});
-      this.timeField= createStyledElement('input', {}, [], {type: 'time'});
+      this.timeField= createStyledElement('input', {}, [], {type: 'datetime-local'});
       this.selectLvaButton= createStyledElement('button', {}, ['Select Course']);
       this.startStopButton= createStyledElement('button', {}, ['Go!']);
 
@@ -85,10 +85,13 @@
 
       // TODO: determine intial state
       this.state= null;
+      this.lvaRow= null;
+      this.date= null;
       this.setState( State.Ready );
       this.setLvaRow( null );
 
       this._setupLvaSelection();
+      this._setupDateSelection();
     }
 
     _setupLvaSelection() {
@@ -163,6 +166,17 @@
           }
         });
       }
+    }
+
+    _setupDateSelection() {
+      this.timeField.addEventListener('input', () => {
+        if( this.state !== State.Ready ) {
+          console.error('bad state for setting time', this.state);
+          return;
+        }
+
+        this.date= new Date( this.timeField.value );
+      });
     }
 
     _enableFields( enable ) {
