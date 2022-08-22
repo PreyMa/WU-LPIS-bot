@@ -41,7 +41,7 @@
     Object.assign( element.style, style );
     children.forEach( c => {
       if( typeof c === 'string' ) {
-        element.innerText+= c;
+        element.appendChild( document.createTextNode(c) );
         return;
       }
 
