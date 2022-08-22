@@ -65,6 +65,8 @@
       this.selectLvaButton= createStyledElement('button', {}, ['Select Course']);
       this.startStopButton= createStyledElement('button', {}, ['Go!']);
 
+      this.errorField= createStyledElement('div', {border: '1px solid grey', fontStyle: 'italic', display: 'none'});
+
       this.root= createStyledElement('div', {
         display: 'flex',
         flexDirection: 'column',
@@ -80,7 +82,8 @@
           this.timeField,
           this.selectLvaButton,
           this.startStopButton
-        ])
+        ]),
+        this.errorField
       ]);
 
       // TODO: determine intial state
@@ -103,6 +106,8 @@
             return;
           }
 
+          this._showMessage();
+
           const id= this.lvaField.value.trim();
           if( !id ) {
             this._setLvaRow( null );
@@ -119,7 +124,7 @@
             }
           }
 
-          // TODO: Show error -> no course with this id
+          this._showError(`Could not find a course with the id '${id}'`);
           this._setLvaRow( null );
         }
       });
@@ -133,11 +138,13 @@
 
         if( this.state === State.Selecting ) {
           this._setState( State.Ready )
+          this._showMessage();
           this.selectLvaButton.innerText= 'Select Course';
           return;
         }
 
         this._setState( State.Selecting );
+        this._showMessage('Click on the course you want to register for');
         this.selectLvaButton.innerText= 'Stop selecting';
       });
 
@@ -161,6 +168,7 @@
             this.lvaField.value= extractLvaIdFromRow( row );
             row.style.backgroundColor= null;
             this.selectLvaButton.innerText= 'Select Course';
+            this._showMessage();
             this._setState( State.Ready );
             this._setLvaRow( row );
           }
@@ -216,6 +224,22 @@
       if( this.lvaRow ) {
         this.lvaRow.style.backgroundColor= 'blue';
       }
+    }
+
+    _showError( msg= null ) {
+      this._showMessage('Error: '+ msg);
+      this.errorField.style.backgroundColor= 'lightred';
+    }
+
+    _showMessage( msg= null ) {
+      if( !msg ) {
+        this.errorField.style.display= 'none';
+        return;
+      }
+
+      this.errorField.innerText= msg;
+      this.errorField.style.display= 'block';
+      this.errorField.style.backgroundColor= null;
     }
 
     insertBefore( otherElement ) {
