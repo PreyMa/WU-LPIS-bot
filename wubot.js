@@ -87,8 +87,8 @@
       this.state= null;
       this.lvaRow= null;
       this.date= null;
-      this.setState( State.Ready );
-      this.setLvaRow( null );
+      this._setState( State.Ready );
+      this._setLvaRow( null );
 
       this._setupLvaSelection();
       this._setupDateSelection();
@@ -105,7 +105,7 @@
 
           const id= this.lvaField.value.trim();
           if( !id ) {
-            this.setLvaRow( null );
+            this._setLvaRow( null );
             return;
           }
 
@@ -114,13 +114,13 @@
           for( let i= 1; i< rows.length; i++ ) {
             const row= rows.item( i );
             if( id === extractLvaIdFromRow( row ) ) {
-              this.setLvaRow( row );
+              this._setLvaRow( row );
               return;
             }
           }
 
           // TODO: Show error -> no course with this id
-          this.setLvaRow( null );
+          this._setLvaRow( null );
         }
       });
 
@@ -132,12 +132,12 @@
         }
 
         if( this.state === State.Selecting ) {
-          this.setState( State.Ready )
+          this._setState( State.Ready )
           this.selectLvaButton.innerText= 'Select Course';
           return;
         }
 
-        this.setState( State.Selecting );
+        this._setState( State.Selecting );
         this.selectLvaButton.innerText= 'Stop selecting';
       });
 
@@ -161,8 +161,8 @@
             this.lvaField.value= extractLvaIdFromRow( row );
             row.style.backgroundColor= null;
             this.selectLvaButton.innerText= 'Select Course';
-            this.setState( State.Ready );
-            this.setLvaRow( row );
+            this._setState( State.Ready );
+            this._setLvaRow( row );
           }
         });
       }
@@ -186,7 +186,7 @@
       this.startStopButton.disabled= !enable;
     }
 
-    setState( state ) {
+    _setState( state ) {
       this.state= state;
       this.stateField.innerText= state.text;
       this.stateField.style.backgroundColor= state.color;
@@ -207,7 +207,7 @@
       }
     }
 
-    setLvaRow( row ) {
+    _setLvaRow( row ) {
       if( this.lvaRow ) {
         this.lvaRow.style.backgroundColor= null;
       }
