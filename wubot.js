@@ -99,8 +99,8 @@
         }
 
         if( this.state === State.Selecting ) {
-          this.selectLvaButton.innerText= 'Select Course';
           this.setState( State.Ready )
+          this.selectLvaButton.innerText= 'Select Course';
           return;
         }
 
