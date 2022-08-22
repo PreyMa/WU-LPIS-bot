@@ -31,6 +31,11 @@
     throw new Error('Could not find main table');
   }
 
+
+  function extractLvaIdFromRow( row ) {
+    return row.firstElementChild.innerText.split('\n')[0].trim();
+  }
+
   function createStyledElement( type, style, children= [], attributes= {} ) {
     const element= document.createElement( type );
     Object.assign( element.style, style );
