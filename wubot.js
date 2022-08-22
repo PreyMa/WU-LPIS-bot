@@ -92,6 +92,36 @@
     }
 
     _setupLvaSelection() {
+      // Setup event handler for the lva id text field
+      this.lvaField.addEventListener('keydown', e => {
+        if( e.keyCode === 13 ) {
+          if( this.state !== State.Ready ) {
+            console.error('bad state for selecting', this.state);
+            return;
+          }
+
+          const id= this.lvaField.value.trim();
+          if( !id ) {
+            this.setLvaRow( null );
+            return;
+          }
+
+          // Skip the <tr> inside the <thead> by starting with index 1
+          const rows= mainTable().rows;
+          for( let i= 1; i< rows.length; i++ ) {
+            const row= rows.item( i );
+            if( id === extractLvaIdFromRow( row ) ) {
+              this.setLvaRow( row );
+              return;
+            }
+          }
+
+          // TODO: Show error -> no course with this id
+          this.setLvaRow( null );
+        }
+      });
+
+      // Setup event handler for the lva selection button
       this.selectLvaButton.addEventListener('click', () => {
         if( this.state !== State.Ready && this.state !== State.Selecting ) {
           console.error('bad state for selecting', this.state);
@@ -108,6 +138,7 @@
         this.selectLvaButton.innerText= 'Stop selecting';
       });
 
+      // Setup event handlers for all table rows
       // Skip the <tr> inside the <thead> by starting with index 1
       const rows= mainTable().rows;
       for( let i= 1; i< rows.length; i++ ) {
@@ -124,7 +155,7 @@
         });
         row.addEventListener('click', () => {
           if( this.state === State.Selecting ) {
-            this.lvaField.value= row.innerText.split('\n')[0].trim();
+            this.lvaField.value= extractLvaIdFromRow( row );
             row.style.backgroundColor= null;
             this.selectLvaButton.innerText= 'Select Course';
             this.setState( State.Ready );
