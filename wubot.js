@@ -12,7 +12,90 @@
 // ==/UserScript==
 
 (function() {
-    'use strict';
+  'use strict';
 
-    // Your code here...
+  let mainTableElement= null;
+  function mainTable() {
+    if( mainTableElement ) {
+      return mainTableElement;
+    }
+
+    const tables= document.querySelectorAll('table');
+    for( const table of tables ) {
+      const rowHeader= table.querySelector('th:nth-child(2)');
+      if( rowHeader && rowHeader.innerText.trim().toLowerCase() === 'plätze' ) {
+        mainTableElement= table;
+        return table;
+      }
+    }
+    throw new Error('Could not find main table');
+  }
+
+  function createStyledElement( type, style, children= [], attributes= {} ) {
+    const element= document.createElement( type );
+    Object.assign( element.style, style );
+    children.forEach( c => {
+      if( typeof c === 'string' ) {
+        element.innerText+= c;
+        return;
+      }
+
+      element.appendChild( c );
+    });
+
+    for( const attr in attributes ) {
+      element.setAttribute( attr, attributes[attr] );
+    }
+
+    return element;
+  }
+
+  const State= {
+    Ready: {text: 'Ready', color: 'lightgreen'},
+    Error: {text: 'Error!', color: 'red'},
+    Pending: {text: 'Pending...', color: 'yellow'},
+    Selecting: {text: 'Selecting...', color: 'grey'}
+  }
+
+  class UserInterface {
+    constructor() {
+      this.stateField= createStyledElement('div', {});
+      this.lvaField= createStyledElement('input', {}, [], {type: 'text'});
+      this.timeField= createStyledElement('input', {}, [], {type: 'time'});
+      this.selectLvaButton= createStyledElement('button', {}, ['Select Course']);
+      this.startStopButton= createStyledElement('button', {}, ['Go!']);
+
+      this.root= createStyledElement('div', {
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '1rem'
+      }, [
+        createStyledElement('div', {
+          display: 'flex',
+          flexDirection: 'row',
+          gap: '1rem'
+        }, [
+          this.stateField,
+          this.lvaField,
+          this.timeField,
+          this.selectLvaButton,
+          this.startStopButton
+        ])
+      ]);
+
+
+    }
+
+    insertBefore( otherElement ) {
+      otherElement.parentElement.insertBefore( this.root, otherElement );
+    }
+  }
+
+  function main() {
+
+    const ui= new UserInterface();
+    ui.insertBefore( mainTable() );
+  }
+
+  main();
 })();
