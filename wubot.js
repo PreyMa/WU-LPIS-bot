@@ -36,6 +36,41 @@
     return row.firstElementChild.innerText.split('\n')[0].trim();
   }
 
+  function extractSubmitButtonFromRow( row ) {
+    return row.querySelector('td.action form input[type="submit"]');
+  }
+
+  function extractDateFromRow( row ) {
+    const text= row.querySelector('td.action').innerText.trim();
+    const parts= text.split(/\s/);
+    if( parts[0] !== 'ab' && parts[0] !== 'bis' ) {
+      console.error(`Expected 'ab' or 'bis' before date string`);
+      return null;
+    }
+
+    if( parts.length < 3 ) {
+      console.error('Too little parts to parse date');
+      return null;
+    }
+
+    const dateParts= parts[1].split('.');
+    const timeParts= parts[2].split(':');
+
+    return new Date(
+      parseInt( dateParts[2] ), // year
+      parseInt( dateParts[1] ) -1, // month (zero based)
+      parseInt( dateParts[0] ), // days
+      parseInt( timeParts[0] ), // hours
+      parseInt( timeParts[1] ), // minutes
+      0, // seconds
+      0  // millis
+    );
+  }
+
+  function dateToLocalIsoString( date ) {
+    return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0,-1)
+  }
+
   class UIElement {
     getRoot() {
       return this.root;
@@ -189,6 +224,7 @@
       // TODO: determine intial state
       this.state= null;
       this.lvaRow= null;
+      this.submitButton= null;
       this.date= null;
       this._setState( State.Ready );
       this._setLvaRow( null );
@@ -319,19 +355,37 @@
     _setDate( date ) {
       this.date= date;
 
-      if( this.date ) {
-        this.clock.setTargetTime( this.date );
-        this.clock.show();
+      if( !this.date ) {
+        this.timeField.value= null;
+        this.clock.show( false );
+        return;
       }
+
+
+      this.timeField.value= dateToLocalIsoString( this.date );
+      this.clock.setTargetTime( this.date );
+      this.clock.show();
     }
 
     _setLvaRow( row ) {
       if( this.lvaRow ) {
         this.lvaRow.style.backgroundColor= null;
+        this.submitButton.style.backgroundColor= null;
       }
 
       this.lvaRow= row;
       if( this.lvaRow ) {
+        this.submitButton= extractSubmitButtonFromRow( this.lvaRow );
+        if( !this.submitButton ) {
+          this._showError('Could not find registration button. This might be a bug');
+          this.lvaRow= null;
+          return;
+        }
+
+        const date= extractDateFromRow( this.lvaRow );
+        this._setDate( date );
+
+        this.submitButton.style.backgroundColor= Color.ActiveSubmitButton;
         this.lvaRow.style.backgroundColor= Color.ActiveRow;
       }
     }
