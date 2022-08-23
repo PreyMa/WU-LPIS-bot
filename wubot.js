@@ -343,6 +343,7 @@
       if( !registration ) {
         this._setLvaRow( null, true );
         this._setDate( null );
+        return;
       }
 
       if( registration.lvaId ) {
