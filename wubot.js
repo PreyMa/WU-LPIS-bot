@@ -511,13 +511,8 @@
     }
   }
 
-  let settings= null;
-  function main() {
-    settings= new Settings();
-
-    const ui= new UserInterface();
-    ui.insertBefore( mainTable() );
-  }
-
-  main();
+  /* Main entry point */
+  const settings= new Settings();
+  const ui= new UserInterface();
+  ui.insertBefore( mainTable() );
 })();
