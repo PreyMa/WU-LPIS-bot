@@ -118,6 +118,18 @@
 
       this.persist();
     }
+
+    registration() {
+      return this.activeRegistration || this.stagedRegistration;
+    }
+
+    toState() {
+      if( this.activeRegistration && this.activeRegistration.lvaId && this.activeRegistration.date ) {
+        return State.Pending;
+      }
+
+      return State.Ready;
+    }
   }
 
   class UIElement {
@@ -274,12 +286,42 @@
       this.lvaRow= null;
       this.submitButton= null;
       this.date= null;
-      this._setState( State.Ready );
-      this._setLvaRow( null );
-      this.clock.show( false );
 
+      this._restoreStateFromSettings();
       this._setupLvaSelection();
       this._setupDateSelection();
+    }
+
+    _restoreStateFromSettings() {
+      this._setState( settings.toState() );
+      this.clock.show( false );
+
+      const registration= settings.registration();
+      if( !registration ) {
+        this._setLvaRow( null, true );
+        this._setDate( null );
+      }
+
+      if( registration.lvaId ) {
+        const row= findLvaRowById( registration.lvaId );
+        if( !row ) {
+          this._showError(`Could not find a course with the id '${registration.lvaId}'`);
+          this._setState( State.Ready );
+          return;
+        }
+
+        // Don't try to auto-detect the date
+        this._setLvaRow( row, true );
+      }
+
+      if( registration.date ) {
+        this._setDate( new Date( registration.date ), true );
+      }
+
+      if( this.state === State.Pending ) {
+        // TODO: create timer
+        return;
+      }
     }
 
     _setupLvaSelection() {
@@ -396,9 +438,12 @@
       settings.setRegistration( this.state, this.lvaRow, this.date );
     }
 
-    _setDate( date ) {
+    _setDate( date, restoreState= false ) {
       this.date= date;
-      this._updateSettings();
+
+      if( !restoreState ) {
+        this._updateSettings();
+      }
 
       if( !this.date ) {
         this.timeField.value= null;
@@ -411,7 +456,7 @@
       this.clock.show();
     }
 
-    _setLvaRow( row ) {
+    _setLvaRow( row, restoreState= false ) {
       if( this.lvaRow ) {
         this.lvaRow.style.backgroundColor= null;
         this.submitButton.style.backgroundColor= null;
@@ -430,15 +475,19 @@
           return;
         }
 
-        const date= extractDateFromRow( this.lvaRow );
-        this._setDate( date );
+        if( !restoreState ) {
+          const date= extractDateFromRow( this.lvaRow );
+          this._setDate( date );
+        }
 
         this.submitButton.style.backgroundColor= Color.ActiveSubmitButton;
         this.lvaRow.style.backgroundColor= Color.ActiveRow;
       }
 
-      // Update settings after the date was auto-detected
-      this._updateSettings();
+      if( !restoreState ) {
+        // Update settings after the date was auto-detected
+        this._updateSettings();
+      }
     }
 
     _showError( msg= null ) {
