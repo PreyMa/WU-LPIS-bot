@@ -229,6 +229,7 @@
       if( !this.targetTime ) {
         this.signField.innerText= '  ';
         this.hourField.innerText= this.minuteField.innerText= this.secondField.innerText= '--';
+        this.secondField.style.color= 'black';
         return;
       }
 
@@ -237,7 +238,10 @@
       this.secondField.innerText= `${diff % 60}`.padStart(2, '0');
       this.minuteField.innerText= `${Math.floor( diff / 60 ) % 60}`.padStart(2, '0');
       this.hourField.innerText= Math.floor( diff / 3600 );
-      this.signField.innerText= now < this.targetTime ? '- ' : '+ ';
+
+      const isBefore= now < this.targetTime;
+      this.signField.innerText= isBefore ? '- ' : '+ ';
+      this.secondField.style.color= isBefore && diff <= 10 ? 'red' : 'black';
     }
   }
 
