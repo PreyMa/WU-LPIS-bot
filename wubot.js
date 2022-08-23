@@ -213,7 +213,7 @@
 
   const State= {
     Ready: {text: 'Ready', color: 'lightgreen'},
-    Error: {text: 'Error!', color: 'red'},
+    Error: {text: 'Error!', color: Color.ErrorBox},
     Pending: {text: 'Pending...', color: 'yellow'},
     Selecting: {text: 'Selecting...', color: 'grey'}
   }
@@ -292,13 +292,17 @@
       this.timeField= createStyledElement('input', {}, [], {type: 'datetime-local'});
       this.selectLvaButton= createStyledElement('button', {}, ['Select Course']);
       this.startStopButton= createStyledElement('button', {}, ['Go!']);
+      this.clearErrorButton= createStyledElement('button', {display: 'none', float: 'right'}, ['Close']);
 
       this.errorField= createStyledElement('div', {
         border: '1px solid grey',
         padding: '1rem',
         fontStyle: 'italic',
         display: 'none'
-      });
+      }, [
+        createStyledElement('span', {}),
+        this.clearErrorButton
+      ]);
 
       this.clock= new Clock();
 
@@ -333,6 +337,7 @@
       this._setupLvaSelection();
       this._setupDateSelection();
       this._setupStartStopButton();
+      this._setupClearErrorButton();
     }
 
     _restoreStateFromSettings() {
@@ -377,9 +382,8 @@
             return;
           }
 
-          // Clear error state
+          // Clear error message
           this._showMessage();
-          this._setState( State.Ready );
 
           const id= this.lvaField.value.trim();
           if( !id ) {
@@ -445,7 +449,6 @@
           return;
         }
 
-        this._setState( State.Ready );
         this._setDate( new Date( this.timeField.value ) );
       });
     }
@@ -466,6 +469,14 @@
 
         // Save the state change
         this._updateSettings();
+      });
+    }
+
+    _setupClearErrorButton() {
+      this.clearErrorButton.addEventListener('click', () => {
+        this._setState( State.Ready );
+        this.clearErrorButton.style.display= 'none';
+        this._showMessage();
       });
     }
 
@@ -494,6 +505,13 @@
           this._enableFields( false );
           this.selectLvaButton.disabled= false;
           this.selectLvaButton.innerText= 'Stop selecting';
+          break;
+
+        case State.Error:
+          this._enableFields( true );
+          this.startStopButton.innerText= 'Go!';
+          this.selectLvaButton.innerText= 'Select course';
+          this.clearErrorButton.style.display= 'block';
           break;
 
         case State.Ready:
@@ -589,7 +607,7 @@
         return;
       }
 
-      this.errorField.innerText= msg;
+      this.errorField.firstElementChild.innerText= msg;
       this.errorField.style.display= 'block';
       this.errorField.style.backgroundColor= null;
     }
