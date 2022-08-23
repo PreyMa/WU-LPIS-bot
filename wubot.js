@@ -158,7 +158,6 @@
       ]);
 
       this.targetTime= null;
-      console.log( this );
       this.intervalTimer= window.setInterval( () => this._update(), 500 );
       this._update();
     }
@@ -365,7 +364,6 @@
         this.clock.show( false );
         return;
       }
-
 
       this.timeField.value= dateToLocalIsoString( this.date );
       this.clock.setTargetTime( this.date );
