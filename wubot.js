@@ -36,12 +36,27 @@
     return row.firstElementChild.innerText.split('\n')[0].trim();
   }
 
+  class UIElement {
+    getRoot() {
+      return this.root;
+    }
+
+    insertBefore( otherElement ) {
+      otherElement.parentElement.insertBefore( this.getRoot(), otherElement );
+    }
+  }
+
   function createStyledElement( type, style, children= [], attributes= {} ) {
     const element= document.createElement( type );
     Object.assign( element.style, style );
     children.forEach( c => {
       if( typeof c === 'string' ) {
         element.appendChild( document.createTextNode(c) );
+        return;
+      }
+
+      if( c instanceof UIElement ) {
+        element.appendChild( c.getRoot() );
         return;
       }
 
@@ -58,7 +73,8 @@
   const Color= {
     ErrorBox: '#ff6969',
     ActiveRow: '#90ee90',
-    HoveredRow: '#acf1cd'
+    HoveredRow: '#acf1cd',
+    ActiveSubmitButton: '#5eff41'
   };
 
   const State= {
@@ -68,8 +84,72 @@
     Selecting: {text: 'Selecting...', color: 'grey'}
   }
 
-  class UserInterface {
+  class Clock extends UIElement {
     constructor() {
+      super();
+
+      this.signField= createStyledElement('span', {});
+      this.hourField= createStyledElement('span', {});
+      this.minuteField= createStyledElement('span', {});
+      this.secondField= createStyledElement('span', {});
+
+      this.root= createStyledElement('div', {
+        fontSize: '2rem',
+        fontFamily: 'Consolas,monospace'
+      }, [
+        createStyledElement('div', {
+          whiteSpace: 'pre',
+          border: '7px grey double',
+          padding: '1rem',
+          width: 'max-content'
+        }, [
+          this.signField,
+          this.hourField, ' : ',
+          this.minuteField, ' : ',
+          this.secondField
+        ])
+      ]);
+
+      this.targetTime= null;
+      console.log( this );
+      this.intervalTimer= window.setInterval( () => this._update(), 500 );
+      this._update();
+    }
+
+    show( doShow= true ) {
+      this.root.style.display= doShow ? 'block' : 'none';
+    }
+
+    setTargetTime( date ) {
+      this.targetTime= date instanceof Date ? date.getTime() : date;
+      this._update();
+    }
+
+    stop() {
+      window.clearInterval( this.intervalTimer );
+      this.intervalTimer= null;
+    }
+
+    _update() {
+      if( !this.targetTime ) {
+        this.signField.innerText= '  ';
+        this.hourField.innerText= this.minuteField.innerText= this.secondField.innerText= '--';
+        return;
+      }
+
+      const now= Date.now();
+      const diff= Math.floor( Math.abs(this.targetTime - now) / 1000 );
+      this.secondField.innerText= `${diff % 60}`.padStart(2, '0');
+      this.minuteField.innerText= `${Math.floor( diff / 60 ) % 60}`.padStart(2, '0');
+      this.hourField.innerText= Math.floor( diff / 3600 );
+      this.signField.innerText= now < this.targetTime ? '- ' : '+ ';
+    }
+  }
+
+  class UserInterface extends UIElement {
+    constructor() {
+      super();
+
       this.stateField= createStyledElement('div', {});
       this.lvaField= createStyledElement('input', {}, [], {type: 'text'});
       this.timeField= createStyledElement('input', {}, [], {type: 'datetime-local'});
@@ -82,6 +162,8 @@
         fontStyle: 'italic',
         display: 'none'
       });
+
+      this.clock= new Clock();
 
       this.root= createStyledElement('div', {
         display: 'flex',
@@ -100,6 +182,7 @@
           this.selectLvaButton,
           this.startStopButton
         ]),
+        this.clock,
         this.errorField
       ]);
 
@@ -109,6 +192,7 @@
       this.date= null;
       this._setState( State.Ready );
       this._setLvaRow( null );
+      this.clock.show( false );
 
       this._setupLvaSelection();
       this._setupDateSelection();
@@ -200,7 +284,7 @@
           return;
         }
 
-        this.date= new Date( this.timeField.value );
+        this._setDate( new Date( this.timeField.value ) );
       });
     }
 
@@ -232,6 +316,15 @@
       }
     }
 
+    _setDate( date ) {
+      this.date= date;
+
+      if( this.date ) {
+        this.clock.setTargetTime( this.date );
+        this.clock.show();
+      }
+    }
+
     _setLvaRow( row ) {
       if( this.lvaRow ) {
         this.lvaRow.style.backgroundColor= null;
@@ -257,10 +350,6 @@
       this.errorField.innerText= msg;
       this.errorField.style.display= 'block';
       this.errorField.style.backgroundColor= null;
-    }
-
-    insertBefore( otherElement ) {
-      otherElement.parentElement.insertBefore( this.root, otherElement );
     }
   }
 
