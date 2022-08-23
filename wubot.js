@@ -83,6 +83,43 @@
     return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0,-1)
   }
 
+  class Settings {
+    constructor() {
+      this.stagedRegistration= null;
+      this.activeRegistration= null;
+      this.latencyAdjustment= 200;
+      this.keepRefreshing= true;
+      this.load();
+    }
+
+    load() {
+      Object.assign( this, GM_getValue('settings', {}) );
+    }
+
+    persist() {
+      GM_setValue('settings', this);
+    }
+
+    setRegistration( state, row, date ) {
+      const registration= {
+        lvaId: row ? extractLvaIdFromRow( row ) : null,
+        date: date ? date.toISOString() : null
+      };
+
+      this.stagedRegistration= null;
+      this.activeRegistration= null;
+
+      if( state === State.Ready ) {
+        this.stagedRegistration= registration;
+
+      } else if( state === State.Pending ) {
+        this.activeRegistration= registration;
+      }
+
+      this.persist();
+    }
+  }
+
   class UIElement {
     getRoot() {
       return this.root;
@@ -356,8 +393,13 @@
       }
     }
 
+    _updateSettings() {
+      settings.setRegistration( this.state, this.lvaRow, this.date );
+    }
+
     _setDate( date ) {
       this.date= date;
+      this._updateSettings();
 
       if( !this.date ) {
         this.timeField.value= null;
@@ -391,6 +433,9 @@
         this.submitButton.style.backgroundColor= Color.ActiveSubmitButton;
         this.lvaRow.style.backgroundColor= Color.ActiveRow;
       }
+
+      // Update settings after the date was auto-detected
+      this._updateSettings();
     }
 
     _showError( msg= null ) {
@@ -410,7 +455,9 @@
     }
   }
 
+  let settings= null;
   function main() {
+    settings= new Settings();
 
     const ui= new UserInterface();
     ui.insertBefore( mainTable() );
