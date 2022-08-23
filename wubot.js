@@ -363,13 +363,11 @@
         if( this.state === State.Selecting ) {
           this._setState( State.Ready )
           this._showMessage();
-          this.selectLvaButton.innerText= 'Select Course';
           return;
         }
 
         this._setState( State.Selecting );
         this._showMessage('Click on the course you want to register for');
-        this.selectLvaButton.innerText= 'Stop selecting';
       });
 
       // Setup event handlers for all table rows
@@ -390,7 +388,6 @@
         row.addEventListener('click', () => {
           if( this.state === State.Selecting ) {
             row.style.backgroundColor= null;
-            this.selectLvaButton.innerText= 'Select Course';
             this._showMessage();
             this._setState( State.Ready );
             this._setLvaRow( row );
@@ -430,10 +427,12 @@
         case State.Selecting:
           this._enableFields( false );
           this.selectLvaButton.disabled= false;
+          this.selectLvaButton.innerText= 'Stop selecting';
           break;
 
         case State.Ready:
           this._enableFields( true );
+          this.selectLvaButton.innerText= 'Select course';
           break;
       }
     }
