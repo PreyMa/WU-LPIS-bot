@@ -31,6 +31,18 @@
     throw new Error('Could not find main table');
   }
 
+  function findLvaRowById( id ) {
+    // Skip the <tr> inside the <thead> by starting with index 1
+    const rows= mainTable().rows;
+    for( let i= 1; i< rows.length; i++ ) {
+      const row= rows.item( i );
+      if( id === extractLvaIdFromRow( row ) ) {
+        return row;
+      }
+    }
+
+    return null;
+  }
 
   function extractLvaIdFromRow( row ) {
     return row.firstElementChild.innerText.split('\n')[0].trim();
@@ -251,18 +263,11 @@
             return;
           }
 
-          // Skip the <tr> inside the <thead> by starting with index 1
-          const rows= mainTable().rows;
-          for( let i= 1; i< rows.length; i++ ) {
-            const row= rows.item( i );
-            if( id === extractLvaIdFromRow( row ) ) {
-              this._setLvaRow( row );
-              return;
-            }
-          }
+          this._setLvaRow( findLvaRowById( id ) );
 
-          this._showError(`Could not find a course with the id '${id}'`);
-          this._setLvaRow( null );
+          if( !this.lvaRow ) {
+            this._showError(`Could not find a course with the id '${id}'`);
+          }
         }
       });
 
