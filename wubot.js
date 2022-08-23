@@ -88,7 +88,7 @@
       this.stagedRegistration= null;
       this.activeRegistration= null;
       this.latencyAdjustment= 200;
-      this.keepRefreshing= true;
+      this.maxRefreshTime= 10;
       this.load();
     }
 
@@ -129,6 +129,43 @@
       }
 
       return State.Ready;
+    }
+
+    adjustedMillisUntil( date ) {
+      return (date.getTime() - settings.latencyAdjustment) - Date.now();
+    }
+  }
+
+  class ReloadTimer {
+    constructor() {
+      this.timer= null;
+    }
+
+    set( date ) {
+      // Clear old timer first
+      if( this.timer ) {
+        window.clearTimeout( this.timer );
+        this.timer= null;
+      }
+
+      if( date ) {
+        const millis= settings.adjustedMillisUntil( date );
+        if( millis < 0 ) {
+          // Stop refreshing after a specified number of seconds
+          if( millis < -1000 * settings.maxRefreshTime ) {
+            return;
+          }
+
+          return this._doRefresh();
+        }
+
+        console.log('refresh in', millis, 'ms');
+        this.timer= window.setTimeout(() => this._doRefresh(), millis);
+      }
+    }
+
+    _doRefresh() {
+      console.log('REFRESH!!!');
     }
   }
 
@@ -294,6 +331,7 @@
       this._restoreStateFromSettings();
       this._setupLvaSelection();
       this._setupDateSelection();
+      this._setupStartStopButton();
     }
 
     _restoreStateFromSettings() {
@@ -410,6 +448,25 @@
       });
     }
 
+    _setupStartStopButton() {
+      this.startStopButton.addEventListener('click', () => {
+        if( this.state === State.Pending ) {
+          this._setState( State.Ready );
+
+        } else if( this.state === State.Ready ) {
+          if( !this.date || !this.lvaRow ) {
+            this._showError('Missing course or date!')
+            return;
+          }
+
+          this._setState( State.Pending );
+        }
+
+        // Save the state change
+        this._updateSettings();
+      });
+    }
+
     _enableFields( enable ) {
       this.lvaField.disabled= !enable;
       this.timeField.disabled= !enable;
@@ -421,10 +478,14 @@
       this.state= state;
       this.stateField.innerText= state.text;
       this.stateField.style.backgroundColor= state.color;
+      reloadTimer.set( null );
 
       switch( this.state ) {
         case State.Pending:
           this._enableFields( false );
+          this.startStopButton.disabled= false;
+          this.startStopButton.innerText= 'Stop!';
+          reloadTimer.set( this.date );
           break;
 
         case State.Selecting:
@@ -435,6 +496,7 @@
 
         case State.Ready:
           this._enableFields( true );
+          this.startStopButton.innerText= 'Go!';
           this.selectLvaButton.innerText= 'Select course';
           break;
       }
@@ -515,6 +577,7 @@
 
   /* Main entry point */
   const settings= new Settings();
+  const reloadTimer= new ReloadTimer();
   const ui= new UserInterface();
   ui.insertBefore( mainTable() );
 })();
