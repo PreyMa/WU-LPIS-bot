@@ -337,7 +337,9 @@
             return;
           }
 
+          // Clear error state
           this._showMessage();
+          this._setState( State.Ready );
 
           const id= this.lvaField.value.trim();
           if( !id ) {
@@ -403,6 +405,7 @@
           return;
         }
 
+        this._setState( State.Ready );
         this._setDate( new Date( this.timeField.value ) );
       });
     }
