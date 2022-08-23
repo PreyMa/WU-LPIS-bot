@@ -233,7 +233,7 @@
       }
 
       const now= Date.now();
-      const diff= Math.floor( Math.abs(this.targetTime - now) / 1000 );
+      const diff= Math.round( Math.abs(this.targetTime - now) / 1000 );
       this.secondField.innerText= `${diff % 60}`.padStart(2, '0');
       this.minuteField.innerText= `${Math.floor( diff / 60 ) % 60}`.padStart(2, '0');
       this.hourField.innerText= Math.floor( diff / 3600 );
