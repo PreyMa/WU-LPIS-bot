@@ -89,6 +89,7 @@
       this.activeRegistration= null;
       this.latencyAdjustment= 200;
       this.maxRefreshTime= 10;
+      this.submitButtonText= 'anmelden';
       this.load();
     }
 
@@ -524,6 +525,15 @@
       this.clock.show();
     }
 
+    _checkSubmitButton() {
+      if( !this.submitButton ) {
+        return false;
+      }
+
+      const text= this.submitButton.value || this.submitButton.innerText;
+      return text.trim().toLowerCase() === settings.submitButtonText;
+    }
+
     _setLvaRow( row, restoreState= false ) {
       if( this.lvaRow ) {
         this.lvaRow.style.backgroundColor= null;
@@ -539,6 +549,15 @@
         this.submitButton= extractSubmitButtonFromRow( this.lvaRow );
         if( !this.submitButton ) {
           this._showError('Could not find registration button. This might be a bug');
+          this.lvaRow= null;
+          return;
+        }
+
+        if( !this._checkSubmitButton() ) {
+          this._showError(
+            `Wrong registration mode for this button. ` +
+            `Contains '${this.submitButton.value || this.submitButton.innerText}' but expected '${settings.submitButtonText}'.`
+          );
           this.lvaRow= null;
           return;
         }
