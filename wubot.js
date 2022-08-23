@@ -343,7 +343,6 @@
         });
         row.addEventListener('click', () => {
           if( this.state === State.Selecting ) {
-            this.lvaField.value= extractLvaIdFromRow( row );
             row.style.backgroundColor= null;
             this.selectLvaButton.innerText= 'Select Course';
             this._showMessage();
@@ -419,7 +418,11 @@
       }
 
       this.lvaRow= row;
+      this.lvaField.value= null;
+
       if( this.lvaRow ) {
+        this.lvaField.value= extractLvaIdFromRow( row );
+
         this.submitButton= extractSubmitButtonFromRow( this.lvaRow );
         if( !this.submitButton ) {
           this._showError('Could not find registration button. This might be a bug');
