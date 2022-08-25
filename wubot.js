@@ -166,7 +166,7 @@
     }
 
     _doRefresh() {
-      console.log('REFRESH!!!');
+      window.location.reload();
     }
   }
 
@@ -341,9 +341,6 @@
     }
 
     _restoreStateFromSettings() {
-      this._setState( settings.toState() );
-      this.clock.show( false );
-
       const registration= settings.registration();
       if( !registration ) {
         this._setLvaRow( null, true );
@@ -368,10 +365,53 @@
         this._setDate( new Date( registration.date ), true );
       }
 
-      if( this.state === State.Pending ) {
-        // TODO: create timer
+      this.clock.show( false );
+      this._setState( settings.toState(), true );
+    }
+
+    _handlePendingState( restoreState= false ) {
+      if( !this.date || !this.lvaRow ) {
+        this._showError('Missing course data or registration time data. Cannot register.');
+        this._setState( State.Error );
         return;
       }
+
+      // Time is already past target time -> try to do the registration
+      const millis= settings.adjustedMillisUntil( this.date );
+      if( millis < 0 ) {
+        // It is too late -> do not try to refresh again and bail out to ready state
+        if( millis < -1000* settings.maxRefreshTime ) {
+          // When restoring the state during a reload (currently trying to reload) -> show error
+          if( restoreState ) {
+            this._showError( `Could not register over a span of ${settings.maxRefreshTime} seconds. Aborting.` );
+            this._setState( State.Error );
+
+          // Otherwise the user clicked the 'Go' button -> only show warning
+          } else {
+            this._showMessage( `Registration started more than ${settings.maxRefreshTime} seconds ago` );
+            this._setState( State.Ready );
+          }
+          return;
+        }
+
+        if( !this._checkSubmitButton() ) {
+          // TODO: Check if registration already happened and was successfull
+
+          this._showError('Wrong registration mode for this submit button.');
+          this._setState( State.Error );
+          return;
+        }
+
+        // Do the registration
+        if( !this.submitButton.disabled ) {
+          return this.submitButton.click();
+        }
+      }
+
+      // Time is before target time or no button was found yet
+      // Prime the refresh timer
+      reloadTimer.set( this.date );
+      return;
     }
 
     _setupLvaSelection() {
@@ -489,7 +529,7 @@
       this.startStopButton.disabled= !enable;
     }
 
-    _setState( state ) {
+    _setState( state, ...args ) {
       this.state= state;
       this.stateField.innerText= state.text;
       this.stateField.style.backgroundColor= state.color;
@@ -500,7 +540,7 @@
           this._enableFields( false );
           this.startStopButton.disabled= false;
           this.startStopButton.innerText= 'Stop!';
-          reloadTimer.set( this.date );
+          this._handlePendingState( ...args );
           break;
 
         case State.Selecting:
