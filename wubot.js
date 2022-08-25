@@ -348,6 +348,7 @@
       if( !registration ) {
         this._setLvaRow( null, true );
         this._setDate( null );
+        this._setState( State.Ready );
         return;
       }
 
