@@ -477,6 +477,7 @@
         this._setState( State.Ready );
         this.clearErrorButton.style.display= 'none';
         this._showMessage();
+        this._updateSettings();
       });
     }
 
