@@ -42,7 +42,8 @@
         return table;
       } catch( e ) {}
     }
-    throw new Error('Could not find main table');
+
+    return null;
   }
 
   function findLvaRowById( id ) {
