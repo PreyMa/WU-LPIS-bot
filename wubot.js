@@ -305,9 +305,23 @@
       this.stateField= createStyledElement('div', {});
       this.lvaField= createStyledElement('input', {}, [], {type: 'text', title: 'Course id'});
       this.timeField= createStyledElement('input', {}, [], {type: 'datetime-local', title: 'Registration time'});
+      this.latencyAdjustmentField= createStyledElement('input', {}, [], {type: 'number', title: 'Latency adjustement in milliseconds', min: 0, step: 10});
+      this.maxRefreshTimeField= createStyledElement('input', {}, [], {type: 'number', title: 'Number of seconds to attempt registration', min: 1});
+      this.buttonModeField= createStyledElement('select', {}, [], {title: 'Operation mode'});
       this.selectLvaButton= createStyledElement('button', {}, ['Select Course']);
+      this.advancedSettingsButton= createStyledElement('button', {}, ['Advanced']);
       this.startStopButton= createStyledElement('button', {}, ['Go!']);
       this.clearErrorButton= createStyledElement('button', {display: 'none', float: 'right'}, ['Close']);
+
+      this.advancedSettingsPane= createStyledElement('div', {
+        display: 'none',
+        flexDirection: 'row',
+        gap: '1rem'
+      }, [
+        this.maxRefreshTimeField,
+        this.latencyAdjustmentField,
+        this.buttonModeField
+      ]);
 
       this.errorField= createStyledElement('div', {
         border: '1px solid grey',
@@ -320,6 +334,12 @@
       ]);
 
       this.clock= new Clock();
+
+      for( const name in ButtonMode ) {
+        this.buttonModeField.appendChild(
+          createStyledElement('option', {}, [name], {value: name})
+        );
+      }
 
       this.root= createStyledElement('div', {
         display: 'flex',
@@ -335,9 +355,11 @@
           this.stateField,
           this.lvaField,
           this.timeField,
+          this.advancedSettingsButton,
           this.selectLvaButton,
           this.startStopButton
         ]),
+        this.advancedSettingsPane,
         this.clock,
         this.errorField
       ]);
@@ -353,9 +375,14 @@
       this._setupDateSelection();
       this._setupStartStopButton();
       this._setupClearErrorButton();
+      this._setupAdvancedSettings();
     }
 
     _restoreStateFromSettings() {
+      this.latencyAdjustmentField.value= settings.latencyAdjustment;
+      this.maxRefreshTimeField.value= settings.maxRefreshTime;
+      this.buttonModeField.value= settings.buttonMode().name;
+
       const registration= settings.registration();
       if( !registration ) {
         this._setLvaRow( null, true );
@@ -540,6 +567,25 @@
         this._showMessage();
         this._updateSettings();
       });
+    }
+
+    _setupAdvancedSettings() {
+      // Toggle the advanced settings pane
+      this.advancedSettingsButton.addEventListener('click', () => {
+        const settingsShown= this.advancedSettingsPane.style.display === 'flex';
+        this.advancedSettingsPane.style.display= settingsShown ? 'none' : 'flex';
+      });
+
+      this.latencyAdjustmentField.addEventListener('input', () => this._updateAdvancedSettings());
+      this.maxRefreshTimeField.addEventListener('input', () => this._updateAdvancedSettings());
+      this.buttonModeField.addEventListener('input', () => this._updateAdvancedSettings());
+    }
+
+    _updateAdvancedSettings() {
+      settings.latencyAdjustment= Math.max(this.latencyAdjustmentField.value || 0, 0);
+      settings.maxRefreshTime= Math.max(this.maxRefreshTimeField.value || 0, 0);
+      settings.buttonModeName= this.buttonModeField.value;
+      settings.persist();
     }
 
     _enableFields( enable ) {
