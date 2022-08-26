@@ -448,6 +448,13 @@
         return;
       }
 
+      // Check if the button in the 'before' state (not registered yet) exists -> error out if not
+      if( !this._checkSubmitButton( false ) ) {
+        this._showError('Wrong registration mode for this submit button.');
+        this._setState( State.Error );
+        return;
+      }
+
       // Time is already past target time -> try to do the registration
       const millis= settings.adjustedMillisUntil( this.date );
       if( millis < 0 ) {
@@ -463,13 +470,6 @@
             this._showMessage( `Registration started more than ${settings.maxRefreshTime} seconds ago` );
             this._setState( State.Ready );
           }
-          return;
-        }
-
-        // Check if the button in the 'before' state (not registered yet) exists -> error out if not
-        if( !this._checkSubmitButton( false ) ) {
-          this._showError('Wrong registration mode for this submit button.');
-          this._setState( State.Error );
           return;
         }
 
