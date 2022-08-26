@@ -22,11 +22,21 @@
 
     const tables= document.querySelectorAll('table');
     for( const table of tables ) {
-      const rowHeader= table.querySelector('th:nth-child(2)');
-      if( rowHeader && rowHeader.innerText.trim().toLowerCase() === 'plätze' ) {
+      try {
+        const headerColumns= table.tHead.firstElementChild.children;
+        if( !headerColumns || headerColumns.length !== 3 ) {
+          break;
+        }
+
+        const veranstaltungText= headerColumns.item(0).innerText.trim().toLowerCase();
+        const plaetzeText= headerColumns.item(1).innerText.trim().toLowerCase();
+        if( veranstaltungText !== 'veranstaltung' || plaetzeText !== 'plätze' ) {
+          break;
+        }
+
         mainTableElement= table;
         return table;
-      }
+      } catch( e ) {}
     }
     throw new Error('Could not find main table');
   }
