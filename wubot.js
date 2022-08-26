@@ -102,19 +102,21 @@
     }
 
     setRegistration( state, row, date ) {
+      this.stagedRegistration= null;
+      this.activeRegistration= null;
+
       const registration= {
         lvaId: row ? extractLvaIdFromRow( row ) : null,
         date: date ? date.toISOString() : null
       };
 
-      this.stagedRegistration= null;
-      this.activeRegistration= null;
+      if( registration.lvaId && registration.date ) {
+        if( state === State.Ready ) {
+          this.stagedRegistration= registration;
 
-      if( state === State.Ready ) {
-        this.stagedRegistration= registration;
-
-      } else if( state === State.Pending ) {
-        this.activeRegistration= registration;
+        } else if( state === State.Pending ) {
+          this.activeRegistration= registration;
+        }
       }
 
       this.persist();
