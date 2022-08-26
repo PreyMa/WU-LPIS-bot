@@ -376,6 +376,8 @@
         return;
       }
 
+      this.clock.show();
+
       // Time is already past target time -> try to do the registration
       const millis= settings.adjustedMillisUntil( this.date );
       if( millis < 0 ) {
