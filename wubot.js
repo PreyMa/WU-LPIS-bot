@@ -241,16 +241,17 @@
 
   const Color= {
     ErrorBox: '#ff6969',
+    ErrorBoxBorder: '#ff0000',
     ActiveRow: '#90ee90',
     HoveredRow: '#acf1cd',
     ActiveSubmitButton: '#5eff41'
   };
 
   const State= {
-    Ready: {text: 'Ready', color: 'lightgreen'},
-    Error: {text: 'Error!', color: Color.ErrorBox},
-    Pending: {text: 'Pending...', color: 'yellow'},
-    Selecting: {text: 'Selecting...', color: 'grey'}
+    Ready: {text: '👓 Ready', color: 'lightgreen'},
+    Error: {text: '❌ Error!', color: Color.ErrorBox},
+    Pending: {text: '⏳ Pending...', color: 'yellow'},
+    Selecting: {text: '👆 Selecting...', color: Color.HoveredRow}
   }
 
   const ButtonMode= {
@@ -268,7 +269,9 @@
 
       this.root= createStyledElement('div', {
         fontSize: '2rem',
-        fontFamily: 'Consolas,monospace'
+        fontFamily: 'Consolas,monospace',
+        display: 'flex',
+        justifyContent: 'center'
       }, [
         createStyledElement('div', {
           whiteSpace: 'pre',
@@ -289,7 +292,7 @@
     }
 
     show( doShow= true ) {
-      this.root.style.display= doShow ? 'block' : 'none';
+      this.root.style.display= doShow ? 'flex' : 'none';
     }
 
     setTargetTime( date ) {
@@ -326,7 +329,7 @@
     constructor() {
       super();
 
-      this.stateField= createStyledElement('div', {padding: '5px'});
+      this.stateField= createStyledElement('div', {padding: '5px', borderRadius: '5px'});
       this.lvaField= createStyledElement('input', {}, [], {type: 'text', title: 'Course id'});
       this.timeField= createStyledElement('input', {}, [], {type: 'datetime-local', title: 'Registration time'});
       this.latencyAdjustmentField= createStyledElement('input', {}, [], {type: 'number', title: 'Latency adjustement in milliseconds', min: 0, step: 10});
@@ -351,7 +354,8 @@
         border: '1px solid grey',
         padding: '1rem',
         fontStyle: 'italic',
-        display: 'none'
+        display: 'none',
+        borderRadius: '5px'
       }, [
         createStyledElement('span', {}),
         this.clearErrorButton
@@ -369,7 +373,10 @@
         display: 'flex',
         flexDirection: 'column',
         gap: '1rem',
-        margin: '2rem'
+        margin: '1rem',
+        padding: '1rem',
+        boxShadow: '3px 3px 5px 2px #adadad',
+        borderRadius: '0.5rem'
       }, [
         createStyledElement('div', {
           display: 'flex',
@@ -738,6 +745,7 @@
 
     _showError( msg= null ) {
       this._showMessage('Error: '+ msg);
+      this.errorField.style.borderColor= Color.ErrorBoxBorder;
       this.errorField.style.backgroundColor= Color.ErrorBox;
     }
 
@@ -750,6 +758,7 @@
       this.errorField.firstElementChild.innerText= msg;
       this.errorField.style.display= 'block';
       this.errorField.style.backgroundColor= null;
+      this.errorField.style.borderColor= null;
     }
   }
 
