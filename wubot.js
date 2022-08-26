@@ -14,6 +14,10 @@
 (function() {
   'use strict';
 
+  function extractNavbarFirstItem() {
+    return document.querySelector('body > a[title="PRF/LVP/PI-Anmeldung"]');
+  }
+
   let mainTableElement= null;
   function mainTable() {
     if( mainTableElement ) {
@@ -740,6 +744,15 @@
   }
 
   /* Main entry point */
+
+  // Check if this is the correct page
+  if( !mainTable() || !extractNavbarFirstItem() || !extractNavbarFirstItem().classList.contains('thd') ) {
+    console.log('WU LPIS Registration Bot: off');
+    return;
+  }
+
+  console.log('WU LPIS Registration Bot: on');
+
   const settings= new Settings();
   const reloadTimer= new ReloadTimer();
   const ui= new UserInterface();
