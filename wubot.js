@@ -303,8 +303,8 @@
       super();
 
       this.stateField= createStyledElement('div', {});
-      this.lvaField= createStyledElement('input', {}, [], {type: 'text'});
-      this.timeField= createStyledElement('input', {}, [], {type: 'datetime-local'});
+      this.lvaField= createStyledElement('input', {}, [], {type: 'text', title: 'Course id'});
+      this.timeField= createStyledElement('input', {}, [], {type: 'datetime-local', title: 'Registration time'});
       this.selectLvaButton= createStyledElement('button', {}, ['Select Course']);
       this.startStopButton= createStyledElement('button', {}, ['Go!']);
       this.clearErrorButton= createStyledElement('button', {display: 'none', float: 'right'}, ['Close']);
