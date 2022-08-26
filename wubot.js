@@ -54,6 +54,11 @@
 
   function extractDateFromRow( row ) {
     const text= row.querySelector('td.action').innerText.trim();
+    if( !/^\w+\s+\d{1,2}\.\d{1,2}\.\d{4}\s+\d{1,2}:\d{1,2}$/gm.test( text ) ) {
+      console.error(`Regex check failed`);
+      return null;
+    }
+
     const parts= text.split(/\s/);
     if( parts[0] !== 'ab' && parts[0] !== 'bis' ) {
       console.error(`Expected 'ab' or 'bis' before date string`);
@@ -642,6 +647,9 @@
 
           const date= extractDateFromRow( this.lvaRow );
           this._setDate( date );
+          if( !date ) {
+            this._showError( `Could not read date and time for course as it did not conform to 'ab/bis dd.MM.yyyy hh:mm'.` );
+          }
         }
 
         this.submitButton.style.backgroundColor= Color.ActiveSubmitButton;
