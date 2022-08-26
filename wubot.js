@@ -94,7 +94,7 @@
       this.activeRegistration= null;
       this.latencyAdjustment= 200;
       this.maxRefreshTime= 10;
-      this.buttonMode= ButtonMode.Register;
+      this.buttonModeName= ButtonMode.Register.name;
       this.load();
     }
 
@@ -141,6 +141,10 @@
 
     adjustedMillisUntil( date ) {
       return (date.getTime() - settings.latencyAdjustment) - Date.now();
+    }
+
+    buttonMode() {
+      return ButtonMode[this.buttonModeName];
     }
   }
 
@@ -226,7 +230,7 @@
   }
 
   const ButtonMode= {
-    Register: { before: 'anmelden', after: 'abmelden' }
+    Register: { name: 'Register', before: 'anmelden', after: 'abmelden' }
   }
 
   class Clock extends UIElement {
@@ -611,7 +615,7 @@
       }
 
       const buttonText= this.submitButton.value || this.submitButton.innerText;
-      const expectedText= useAfterText ? settings.buttonMode.after : settings.buttonMode.before;
+      const expectedText= useAfterText ? settings.buttonMode().after : settings.buttonMode().before;
       return buttonText.trim().toLowerCase() === expectedText;
     }
 
@@ -639,7 +643,7 @@
           if( !this._checkSubmitButton() ) {
             this._showError(
               `Wrong registration mode for this button. ` +
-              `Contains '${this.submitButton.value || this.submitButton.innerText}' but expected '${settings.buttonMode.before}'.`
+              `Contains '${this.submitButton.value || this.submitButton.innerText}' but expected '${settings.buttonMode().before}'.`
             );
             this.lvaRow= null;
             return;
