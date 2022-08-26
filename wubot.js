@@ -89,7 +89,7 @@
       this.activeRegistration= null;
       this.latencyAdjustment= 200;
       this.maxRefreshTime= 10;
-      this.submitButtonText= 'anmelden';
+      this.buttonMode= ButtonMode.Register;
       this.load();
     }
 
@@ -216,6 +216,10 @@
     Error: {text: 'Error!', color: Color.ErrorBox},
     Pending: {text: 'Pending...', color: 'yellow'},
     Selecting: {text: 'Selecting...', color: 'grey'}
+  }
+
+  const ButtonMode= {
+    Register: { before: 'anmelden', after: 'abmelden' }
   }
 
   class Clock extends UIElement {
@@ -378,6 +382,14 @@
 
       this.clock.show();
 
+      // Check if the button in the 'after' state (now registered) exists -> registration was successfull
+      if( this._checkSubmitButton( true ) ) {
+        this._showMessage( 'Registration successfull. :^)' );
+        this._setState( State.Ready );
+        this.clock.show( false );
+        return;
+      }
+
       // Time is already past target time -> try to do the registration
       const millis= settings.adjustedMillisUntil( this.date );
       if( millis < 0 ) {
@@ -396,9 +408,8 @@
           return;
         }
 
-        if( !this._checkSubmitButton() ) {
-          // TODO: Check if registration already happened and was successfull
-
+        // Check if the button in the 'before' state (not registered yet) exists -> error out if not
+        if( !this._checkSubmitButton( false ) ) {
           this._showError('Wrong registration mode for this submit button.');
           this._setState( State.Error );
           return;
@@ -588,13 +599,14 @@
       this.clock.show();
     }
 
-    _checkSubmitButton() {
+    _checkSubmitButton( useAfterText= false ) {
       if( !this.submitButton ) {
         return false;
       }
 
-      const text= this.submitButton.value || this.submitButton.innerText;
-      return text.trim().toLowerCase() === settings.submitButtonText;
+      const buttonText= this.submitButton.value || this.submitButton.innerText;
+      const expectedText= useAfterText ? settings.buttonMode.after : settings.buttonMode.before;
+      return buttonText.trim().toLowerCase() === expectedText;
     }
 
     _setLvaRow( row, restoreState= false ) {
@@ -616,16 +628,17 @@
           return;
         }
 
-        if( !this._checkSubmitButton() ) {
-          this._showError(
-            `Wrong registration mode for this button. ` +
-            `Contains '${this.submitButton.value || this.submitButton.innerText}' but expected '${settings.submitButtonText}'.`
-          );
-          this.lvaRow= null;
-          return;
-        }
-
         if( !restoreState ) {
+          // Be strict about the button type, only when user selects the lva
+          if( !this._checkSubmitButton() ) {
+            this._showError(
+              `Wrong registration mode for this button. ` +
+              `Contains '${this.submitButton.value || this.submitButton.innerText}' but expected '${settings.buttonMode.before}'.`
+            );
+            this.lvaRow= null;
+            return;
+          }
+
           const date= extractDateFromRow( this.lvaRow );
           this._setDate( date );
         }
