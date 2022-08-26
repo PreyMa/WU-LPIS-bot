@@ -316,7 +316,7 @@
     constructor() {
       super();
 
-      this.stateField= createStyledElement('div', {});
+      this.stateField= createStyledElement('div', {padding: '5px'});
       this.lvaField= createStyledElement('input', {}, [], {type: 'text', title: 'Course id'});
       this.timeField= createStyledElement('input', {}, [], {type: 'datetime-local', title: 'Registration time'});
       this.latencyAdjustmentField= createStyledElement('input', {}, [], {type: 'number', title: 'Latency adjustement in milliseconds', min: 0, step: 10});
