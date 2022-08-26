@@ -6,12 +6,12 @@
 // @author       PreyMa
 // @match        *://*/*
 // @icon         data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgBAMAAACBVGfHAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAASUExURQAAAH9/f9PT0+0cJO/v7////4KSIg8AAACKSURBVCjPhdFRDoAgCABQr4DhAewGjXUANi/QR/e/SoqkVLr40HyDZOhSDSL9cLrvb6BfYDQAAMjIeVNYiAoQbRMAEwJ+bREVlGKDnJuPeYmzEsmwEM7jWRKcBdYMKcEK/R8FQG6JdYURsO0DR9A7Bf9qPXjTeokOQWMO9wD9ZB6fIcvD1VdKA7gAUO5YI8LDmx0AAAAASUVORK5CYII=
-// @grant        GM_setValue
-// @grant        GM_getValue
+// @grant        GM.getValue
+// @grant        GM.setValue
 // @noframes
 // ==/UserScript==
 
-(function() {
+(async function() {
   'use strict';
 
   function extractNavbarFirstItem() {
@@ -109,15 +109,24 @@
       this.latencyAdjustment= 200;
       this.maxRefreshTime= 10;
       this.buttonModeName= ButtonMode.Register.name;
-      this.load();
     }
 
-    load() {
-      Object.assign( this, GM_getValue('settings', {}) );
+    static async create() {
+      const instance= new Settings();
+      try {
+        await instance.load();
+      } catch( e ) {
+        console.error('Could not load settings', e);
+      }
+      return instance;
+    }
+
+    async load() {
+      Object.assign( this, await GM.getValue('settings', {}) );
     }
 
     persist() {
-      GM_setValue('settings', this);
+      GM.setValue('settings', this).then(() => {}).catch( e => console.error('Could not persist settings', e));
     }
 
     setRegistration( state, row, date ) {
@@ -753,7 +762,7 @@
 
   console.log('WU LPIS Registration Bot: on');
 
-  const settings= new Settings();
+  const settings= await Settings.create();
   const reloadTimer= new ReloadTimer();
   const ui= new UserInterface();
   ui.insertBefore( mainTable() );
