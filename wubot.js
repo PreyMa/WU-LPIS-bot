@@ -106,7 +106,7 @@
     constructor() {
       this.stagedRegistration= null;
       this.activeRegistration= null;
-      this.latencyAdjustment= 200;
+      this.latencyAdjustment= 60;
       this.maxRefreshTime= 10;
       this.buttonModeName= ButtonMode.Register.name;
     }
