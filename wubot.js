@@ -371,7 +371,6 @@
         this._setDate( new Date( registration.date ), true );
       }
 
-      this.clock.show( false );
       this._setState( settings.toState(), true );
     }
 
@@ -382,13 +381,10 @@
         return;
       }
 
-      this.clock.show();
-
       // Check if the button in the 'after' state (now registered) exists -> registration was successfull
       if( this._checkSubmitButton( true ) ) {
         this._showMessage( 'Registration successfull. :^)' );
         this._setState( State.Ready );
-        this.clock.show( false );
         return;
       }
 
@@ -548,11 +544,13 @@
       this.state= state;
       this.stateField.innerText= state.text;
       this.stateField.style.backgroundColor= state.color;
+      this.clock.show( false );
       reloadTimer.set( null );
 
       switch( this.state ) {
         case State.Pending:
           this._enableFields( false );
+          this.clock.show();
           this.startStopButton.disabled= false;
           this.startStopButton.innerText= 'Stop!';
           this._handlePendingState( ...args );
@@ -573,6 +571,7 @@
 
         case State.Ready:
           this._enableFields( true );
+          this.clock.show( !!settings.registration() );
           this.startStopButton.innerText= 'Go!';
           this.selectLvaButton.innerText= 'Select course';
           break;
