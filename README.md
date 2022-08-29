@@ -9,7 +9,8 @@ Grease/Tamper Monkey Script to automatically register for courses in the WU LPIS
 1. Create a new user script.
 1. Copy or download the entirety of the script from
    [here](https://raw.githubusercontent.com/PreyMa/WU-LPIS-bot/master/wubot.js).
-1. Paste the script into text field of your new userscript.
+1. Paste the script into text field of your new userscript. (Remove any example code
+  that was previously there!)
 1. Save and you are done.
 
 ## ⚡ How to use
