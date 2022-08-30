@@ -33,6 +33,9 @@
     Register: { name: 'Register', before: 'anmelden', after: 'abmelden' }
   }
 
+  function println( ...args ) {
+    console.log( '[WU LPIS Registration Bot]', ...args );
+  }
 
   function extractNavbarFirstItem() {
     return document.querySelector('body > a[title="PRF/LVP/PI-Anmeldung"]');
@@ -275,7 +278,7 @@
           return this._doRefresh();
         }
 
-        console.log('refresh in', millis, 'ms');
+        println('Refresh page in', millis, 'ms');
         this.timer= window.setTimeout(() => this._doRefresh(), millis);
       }
     }
@@ -842,11 +845,11 @@
 
   // Check if this is the correct page
   if( !mainTable() || !extractNavbarFirstItem() || !extractNavbarFirstItem().classList.contains('thd') ) {
-    console.log('WU LPIS Registration Bot: off');
+    println('off');
     return;
   }
 
-  console.log('WU LPIS Registration Bot: on');
+  println('on');
 
   const settings= await Settings.create();
   const reloadTimer= new ReloadTimer();
