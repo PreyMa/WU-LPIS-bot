@@ -670,7 +670,7 @@
         // Only 60 secs left and a course is selected
         if( e.detail.isBefore && e.detail.secs < 60 ) {
           if( this.submitButton && this.state !== State.Pending && !this._currentlyShowsMessage() ) {
-            this._showMessage(
+            this._showWarning(
               'You have selected a course where registration starts in less than 60 seconds.' +
               "Press 'Go!' to enable automatic registration!"
             );
