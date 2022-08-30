@@ -446,7 +446,6 @@
         this.messageField
       ]);
 
-      // TODO: determine intial state
       this.state= null;
       this.lvaRow= null;
       this.submitButton= null;
