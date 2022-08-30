@@ -14,6 +14,26 @@
 (async function() {
   'use strict';
 
+  const Color= {
+    ErrorBox: '#ff6969',
+    ErrorBoxBorder: '#ff0000',
+    ActiveRow: '#90ee90',
+    HoveredRow: '#acf1cd',
+    ActiveSubmitButton: '#5eff41'
+  };
+
+  const State= {
+    Ready: {text: '👓 Ready', color: 'lightgreen'},
+    Error: {text: '❌ Error!', color: Color.ErrorBox},
+    Pending: {text: '⏳ Pending...', color: 'yellow'},
+    Selecting: {text: '👆 Selecting...', color: Color.HoveredRow}
+  }
+
+  const ButtonMode= {
+    Register: { name: 'Register', before: 'anmelden', after: 'abmelden' }
+  }
+
+
   function extractNavbarFirstItem() {
     return document.querySelector('body > a[title="PRF/LVP/PI-Anmeldung"]');
   }
@@ -97,6 +117,30 @@
       0, // seconds
       0  // millis
     );
+  }
+
+  function createStyledElement( type, style, children= [], attributes= {} ) {
+    const element= document.createElement( type );
+    Object.assign( element.style, style );
+    children.forEach( c => {
+      if( typeof c === 'string' ) {
+        element.appendChild( document.createTextNode(c) );
+        return;
+      }
+
+      if( c instanceof UIElement ) {
+        element.appendChild( c.getRoot() );
+        return;
+      }
+
+      element.appendChild( c );
+    });
+
+    for( const attr in attributes ) {
+      element.setAttribute( attr, attributes[attr] );
+    }
+
+    return element;
   }
 
   function dateToLocalIsoString( date ) {
@@ -213,49 +257,6 @@
     insertBefore( otherElement ) {
       otherElement.parentElement.insertBefore( this.getRoot(), otherElement );
     }
-  }
-
-  function createStyledElement( type, style, children= [], attributes= {} ) {
-    const element= document.createElement( type );
-    Object.assign( element.style, style );
-    children.forEach( c => {
-      if( typeof c === 'string' ) {
-        element.appendChild( document.createTextNode(c) );
-        return;
-      }
-
-      if( c instanceof UIElement ) {
-        element.appendChild( c.getRoot() );
-        return;
-      }
-
-      element.appendChild( c );
-    });
-
-    for( const attr in attributes ) {
-      element.setAttribute( attr, attributes[attr] );
-    }
-
-    return element;
-  }
-
-  const Color= {
-    ErrorBox: '#ff6969',
-    ErrorBoxBorder: '#ff0000',
-    ActiveRow: '#90ee90',
-    HoveredRow: '#acf1cd',
-    ActiveSubmitButton: '#5eff41'
-  };
-
-  const State= {
-    Ready: {text: '👓 Ready', color: 'lightgreen'},
-    Error: {text: '❌ Error!', color: Color.ErrorBox},
-    Pending: {text: '⏳ Pending...', color: 'yellow'},
-    Selecting: {text: '👆 Selecting...', color: Color.HoveredRow}
-  }
-
-  const ButtonMode= {
-    Register: { name: 'Register', before: 'anmelden', after: 'abmelden' }
   }
 
   class Clock extends UIElement {
