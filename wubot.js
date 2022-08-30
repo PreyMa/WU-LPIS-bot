@@ -359,7 +359,7 @@
         this.buttonModeField
       ]);
 
-      this.errorField= createStyledElement('div', {
+      this.messageField= createStyledElement('div', {
         border: '1px solid grey',
         padding: '1rem',
         fontStyle: 'italic',
@@ -401,7 +401,7 @@
         ]),
         this.advancedSettingsPane,
         this.clock,
-        this.errorField
+        this.messageField
       ]);
 
       // TODO: determine intial state
@@ -770,24 +770,24 @@
 
     _showError( msg= null ) {
       this._showMessage('Error: '+ msg);
-      this.errorField.style.borderColor= Color.ErrorBoxBorder;
-      this.errorField.style.backgroundColor= Color.ErrorBox;
+      this.messageField.style.borderColor= Color.ErrorBoxBorder;
+      this.messageField.style.backgroundColor= Color.ErrorBox;
     }
 
     _showMessage( msg= null ) {
       if( !msg ) {
-        this.errorField.style.display= 'none';
+        this.messageField.style.display= 'none';
         return;
       }
 
-      this.errorField.firstElementChild.innerText= msg;
-      this.errorField.style.display= 'block';
-      this.errorField.style.backgroundColor= null;
-      this.errorField.style.borderColor= null;
+      this.messageField.firstElementChild.innerText= msg;
+      this.messageField.style.display= 'block';
+      this.messageField.style.backgroundColor= null;
+      this.messageField.style.borderColor= null;
     }
 
     _currentlyShowsMessage() {
-      return this.errorField.style.display !== 'none';
+      return this.messageField.style.display !== 'none';
     }
   }
 
