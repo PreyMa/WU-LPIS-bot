@@ -147,6 +147,43 @@
     return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0,-1)
   }
 
+  function camelCaseToKebabCase( str ) {
+    return str.split('').map(
+      (char, idx) => (char === char.toUpperCase() && idx > 0 ? '-' : '')+ char.toLowerCase()
+    ).join('');
+  }
+
+  let dynamicStyleSheet= null;
+  function styleSheet() {
+    if( dynamicStyleSheet ) {
+      return dynamicStyleSheet;
+    }
+
+    const elem= document.createElement('style');
+    document.head.appendChild( elem );
+    dynamicStyleSheet= elem.sheet;
+    return dynamicStyleSheet;
+  }
+
+  function createAnimationKeyframes( name, frames ) {
+    let ruleText= `@keyframes ${name} {\n`;
+
+    for( const progressKey in frames ) {
+      ruleText+= `  ${progressKey} {\n`;
+
+      const cssProperties= frames[progressKey];
+      for( const propertyKey in cssProperties ) {
+        const propertyValue= cssProperties[propertyKey];
+        ruleText+= `    ${camelCaseToKebabCase( propertyKey )}: ${propertyValue};\n`;
+      }
+      ruleText+= '  }\n';
+    }
+
+    ruleText+= '}';
+    console.log('Inserting animation keyframes:', ruleText);
+    styleSheet().insertRule( ruleText );
+  }
+
   class Settings {
     constructor() {
       this.stagedRegistration= null;
@@ -338,6 +375,11 @@
     constructor() {
       super();
 
+      createAnimationKeyframes('wu-bot-moving-gradient', {
+        from: { backgroundPosition: 'left bottom' },
+        to: { backgroundPosition: 'right bottom' }
+      });
+
       this.stateField= createStyledElement('div', {padding: '5px', borderRadius: '5px'});
       this.lvaField= createStyledElement('input', {}, [], {type: 'text', title: 'Course id'});
       this.timeField= createStyledElement('input', {}, [], {type: 'datetime-local', title: 'Registration time'});
@@ -364,7 +406,8 @@
         padding: '1rem',
         fontStyle: 'italic',
         display: 'none',
-        borderRadius: '5px'
+        borderRadius: '5px',
+        animation: 'wu-bot-moving-gradient linear 2s infinite'
       }, [
         createStyledElement('span', {}),
         this.clearErrorButton
@@ -772,6 +815,12 @@
       this._showMessage('Error: '+ msg);
       this.messageField.style.borderColor= Color.ErrorBoxBorder;
       this.messageField.style.backgroundColor= Color.ErrorBox;
+    }
+
+    _showWarning( msg= null ) {
+      this._showMessage('Warning: '+ msg);
+      this.messageField.style.background= 'linear-gradient(90deg, transparent 30%, #d9e7007d 80%, transparent 100%)';
+      this.messageField.style.backgroundSize= '50% 100%';
     }
 
     _showMessage( msg= null ) {
