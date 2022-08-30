@@ -205,7 +205,7 @@
     }
   }
 
-  class UIElement {
+  class UIElement extends EventTarget {
     getRoot() {
       return this.root;
     }
@@ -314,14 +314,22 @@
       }
 
       const now= Date.now();
-      const diff= Math.round( Math.abs(this.targetTime - now) / 1000 );
-      this.secondField.innerText= `${diff % 60}`.padStart(2, '0');
-      this.minuteField.innerText= `${Math.floor( diff / 60 ) % 60}`.padStart(2, '0');
-      this.hourField.innerText= Math.floor( diff / 3600 );
+      const absDiff= Math.abs(this.targetTime - now) / 1000;
+      const secs= Math.round( absDiff );
+      this.secondField.innerText= `${secs % 60}`.padStart(2, '0');
+      this.minuteField.innerText= `${Math.floor( secs / 60 ) % 60}`.padStart(2, '0');
+      this.hourField.innerText= Math.floor( secs / 3600 );
 
       const isBefore= now < this.targetTime;
       this.signField.innerText= isBefore ? '- ' : '+ ';
-      this.secondField.style.color= isBefore && diff <= 10 ? 'red' : 'black';
+      this.secondField.style.color= isBefore && secs <= 10 ? 'red' : 'black';
+
+      // Time is sampled twice a second (with 500ms), only tick on the second sample
+      if( absDiff % 1 > 0.5 ) {
+        this.dispatchEvent( new CustomEvent('tick', {
+          detail: { isBefore, secs, now }
+        }) );
+      }
     }
   }
 
@@ -407,6 +415,7 @@
       this._setupStartStopButton();
       this._setupClearErrorButton();
       this._setupAdvancedSettings();
+      this._setupTimedWarnings();
     }
 
     _restoreStateFromSettings() {
@@ -612,6 +621,20 @@
       this.buttonModeField.addEventListener('input', () => this._updateAdvancedSettings());
     }
 
+    _setupTimedWarnings() {
+      this.clock.addEventListener('tick', e => {
+        // Only 60 secs left and a course is selected
+        if( e.detail.isBefore && e.detail.secs < 60 ) {
+          if( this.submitButton && this.state !== State.Pending && !this._currentlyShowsMessage() ) {
+            this._showMessage(
+              'You have selected a course where registration starts in less than 60 seconds.' +
+              "Press 'Go!' to enable automatic registration!"
+            );
+          }
+        }
+      });
+    }
+
     _updateAdvancedSettings() {
       settings.latencyAdjustment= Math.max(this.latencyAdjustmentField.value || 0, 0);
       settings.maxRefreshTime= Math.max(this.maxRefreshTimeField.value || 0, 0);
@@ -637,6 +660,7 @@
         case State.Pending:
           this._enableFields( false );
           this.clock.show();
+          this._showMessage();
           this.startStopButton.disabled= false;
           this.startStopButton.innerText= 'Stop!';
           this._handlePendingState( ...args );
@@ -759,6 +783,10 @@
       this.errorField.style.display= 'block';
       this.errorField.style.backgroundColor= null;
       this.errorField.style.borderColor= null;
+    }
+
+    _currentlyShowsMessage() {
+      return this.errorField.style.display !== 'none';
     }
   }
 
