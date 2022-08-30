@@ -180,7 +180,6 @@
     }
 
     ruleText+= '}';
-    console.log('Inserting animation keyframes:', ruleText);
     styleSheet().insertRule( ruleText );
   }
 
