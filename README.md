@@ -17,13 +17,13 @@ Grease/Tamper Monkey Script to automatically register for courses in the WU LPIS
 1. Enable the script
 1. Go to the course's registration page
 1. The UI of the bot should appear on top of the table of courses
-1. Click 'Select course'
+1. Click `Select course`
 1. Select the course in the table by clicking on it
 1. Now the course id and registration time should appear in the fields of the bots
    (If not you can always manually enter the data)
-1. Click 'Go!' to start the registration
+1. Click `Go!` to start the registration
 1. When the clock reaches `00:00:00` the bot will automatically reload the page
-   repeatedly until it can click the 'anmleden' button
+   repeatedly until it can click the `anmleden` button
 1. The color of the button should change to yellow and the page reloads another time.
 1. When the registration was successful you should see a message shown by the bot.
 
