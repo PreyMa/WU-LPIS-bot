@@ -19,13 +19,14 @@
     ErrorBoxBorder: '#ff0000',
     ActiveRow: '#90ee90',
     HoveredRow: '#acf1cd',
-    ActiveSubmitButton: '#5eff41'
+    ActiveSubmitButton: '#5eff41',
+    Pending: 'yellow'
   };
 
   const State= {
     Ready: {text: '👓 Ready', color: 'lightgreen'},
     Error: {text: '❌ Error!', color: Color.ErrorBox},
-    Pending: {text: '⏳ Pending...', color: 'yellow'},
+    Pending: {text: '⏳ Pending...', color: Color.Pending},
     Selecting: {text: '👆 Selecting...', color: Color.HoveredRow}
   }
 
@@ -537,7 +538,9 @@
 
         // Do the registration
         if( !this.submitButton.disabled ) {
-          return this.submitButton.click();
+          this.submitButton.style.backgroundColor= Color.Pending;
+          this.submitButton.click();
+          return;
         }
       }
 
