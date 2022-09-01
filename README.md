@@ -24,18 +24,40 @@ Grease/Tamper Monkey Script to automatically register for courses in the WU LPIS
 1. Click 'Go!' to start the registration
 1. When the clock reaches `00:00:00` the bot will automatically reload the page
    repeatedly until it can click the 'anmleden' button
+1. The color of the button should change to yellow and the page reloads another time.
 1. When the registration was successful you should see a message shown by the bot.
 
-Do not close your laptop or let your computer go to sleep!
+You can reload the page or close and reopen the browser tab, the bot will store
+your settings. But the page has to be open (and the bot active) during the registration!
+
+> **Warning**
+> The bot only reloads the page and clicks the `anmelden` button. You have to
+> navigate to the correct page yourself, and keep the tab open!
+> Do not close your laptop or let your computer go to sleep!
 
 ## 🤔 How does it work
 The script reads the source code of the LPIS page and allows you to select a course,
 to register for. A timer is started when a course is selected. When the timer finishes
 the page is reloaded and the script clicks the `anmelden` button as fast as possible.
 
+The bot/script only runs on your computer inside your browser.
 There is no communication with other servers involved other than LPIS and none of
 your Information leaves your browser. The whole system is to intended to emulate
 a user with superhuman reflexes and mouse clicking speed, somewhat like a "fancy" autoclicker.
+
+## 👎 What it does not do
+The bot does not...
+
+* ... automatically start your browser, or does anything outside of LPIS.
+* ... interact with other open tabs in your browser.
+* ... start your computer or wake it from sleep.
+* ... use the LPIS API or any endpoints, it simply interacts with the user-interface
+  like a regular user would.
+* ... handle multiple registrations at the same time. There is only one single bot
+  instance for all of your open tabs.
+* ... detect changed registration times. If you notice that the time for registration
+  changed, you have to re-select the course. Check the clock that the remaining time
+  matches your expectation!
 
 ## ⏳ Correcting for bad latency
 If you suffer from bad internet latency you can let the script send the request to
