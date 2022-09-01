@@ -87,7 +87,8 @@
   }
 
   function extractSubmitButtonFromRow( row ) {
-    return row.querySelector('td.action form input[type="submit"]');
+    return row.querySelector('td.action form input[type="submit"]') ||
+           row.querySelector('td.action a');
   }
 
   function extractDateFromRow( row ) {
