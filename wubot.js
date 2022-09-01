@@ -92,7 +92,7 @@
   }
 
   function extractDateFromRow( row ) {
-    const text= row.querySelector('td.action').innerText.trim();
+    const text= row.querySelector('td.action .timestamp').innerText.trim();
     if( !/^\w+\s+\d{1,2}\.\d{1,2}\.\d{4}\s+\d{1,2}:\d{1,2}$/gm.test( text ) ) {
       console.error(`Regex check failed`);
       return null;
