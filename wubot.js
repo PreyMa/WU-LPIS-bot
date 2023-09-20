@@ -4,7 +4,7 @@
 // @version      0.1
 // @description  Register with ease
 // @author       PreyMa
-// @match        https://lpis.wu.ac.at/*
+// @match        *://*/*
 // @icon         data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgBAMAAACBVGfHAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAASUExURQAAAH9/f9PT0+0cJO/v7////4KSIg8AAACKSURBVCjPhdFRDoAgCABQr4DhAewGjXUANi/QR/e/SoqkVLr40HyDZOhSDSL9cLrvb6BfYDQAAMjIeVNYiAoQbRMAEwJ+bREVlGKDnJuPeYmzEsmwEM7jWRKcBdYMKcEK/R8FQG6JdYURsO0DR9A7Bf9qPXjTeokOQWMO9wD9ZB6fIcvD1VdKA7gAUO5YI8LDmx0AAAAASUVORK5CYII=
 // @grant        GM.getValue
 // @grant        GM.setValue
@@ -24,15 +24,65 @@
   };
 
   const State= {
-    Ready: {text: '👓 Ready', color: 'lightgreen'},
-    Error: {text: '❌ Error!', color: Color.ErrorBox},
-    Pending: {text: '⏳ Pending...', color: Color.Pending},
-    Selecting: {text: '👆 Selecting...', color: Color.HoveredRow}
+    Ready: {name: 'Ready', text: '👓 Ready', color: 'lightgreen'},
+    Error: {name: 'Error', text: '❌ Error!', color: Color.ErrorBox},
+    Pending: {name: 'Pending', text: '⏳ Pending...', color: Color.Pending},
+    Selecting: {name: 'Selecting', text: '👆 Selecting...', color: Color.HoveredRow}
   }
 
   const ButtonMode= {
     Register: { name: 'Register', before: 'anmelden', after: 'abmelden' }
   }
+
+  const Style= {
+    Clock: {
+      container: {
+        fontSize: '2rem',
+        fontFamily: 'Consolas, monospace',
+        display: 'flex',
+        justifyContent: 'center'
+      },
+      frame: {
+        whiteSpace: 'pre',
+        border: '7px grey double',
+        padding: '1rem',
+        width: 'max-content'
+      }
+    },
+    Table: {
+      'table.schedule td, table.schedule th': {
+        padding: '0.3rem'
+      },
+      'table.schedule tr': {
+        borderBottom: '1px solid grey'
+      },
+      'table.schedule tr:last-child': {
+        borderBottom: 'none'
+      }
+    },
+    mainContainer: {
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '1rem',
+      margin: '1rem',
+      padding: '1rem',
+      boxShadow: '3px 3px 5px 2px #adadad',
+      borderRadius: '0.5rem'
+    },
+    topBar: {
+      display: 'flex',
+      flexDirection: 'row',
+      gap: '1rem'
+    },
+    messageField: {
+      border: '1px solid grey',
+      padding: '1rem',
+      fontStyle: 'italic',
+      display: 'none',
+      borderRadius: '5px',
+      animation: 'wu-bot-moving-gradient linear 2s infinite'
+    }
+  };
 
   function println( ...args ) {
     console.log( '[WU LPIS Registration Bot]', ...args );
@@ -124,7 +174,16 @@
     );
   }
 
-  function createStyledElement( type, style, children= [], attributes= {} ) {
+  let cachedPageId= null;
+  function currentPageId() {
+    if( cachedPageId ) {
+      return cachedPageId;
+    }
+
+    return cachedPageId= new URL(window.location).searchParams.get('SPP');
+  }
+
+  function createStyledElement( type, attributes, style, ...children ) {
     const element= document.createElement( type );
     Object.assign( element.style, style );
     children.forEach( c => {
@@ -146,6 +205,30 @@
     }
 
     return element;
+  }
+
+  function div(attributes= {}, style= {}, ...children) {
+    return createStyledElement( 'div', attributes, style, ...children );
+  }
+
+  function input(attributes= {}, style= {}, ...children) {
+    return createStyledElement( 'input', attributes, style, ...children );
+  }
+
+  function button(attributes= {}, style= {}, ...children) {
+    return createStyledElement( 'button', attributes, style, ...children );
+  }
+
+  function span(attributes= {}, style= {}, ...children) {
+    return createStyledElement( 'span', attributes, style, ...children );
+  }
+
+  function tr(attributes= {}, style= {}, ...children) {
+    return createStyledElement( 'tr', attributes, style, ...children );
+  }
+
+  function th(attributes= {}, style= {}, ...children) {
+    return createStyledElement( 'th', attributes, style, ...children );
   }
 
   function dateToLocalIsoString( date ) {
@@ -170,31 +253,76 @@
     return dynamicStyleSheet;
   }
 
+  function serializeCSSProperties(selectorName, cssProperties) {
+    let text= `  ${selectorName} {\n`;
+
+    for( const propertyKey in cssProperties ) {
+      const propertyValue= cssProperties[propertyKey];
+      text+= `    ${camelCaseToKebabCase( propertyKey )}: ${propertyValue};\n`;
+    }
+    return text+ '  }\n';
+  }
+  
   function createAnimationKeyframes( name, frames ) {
     let ruleText= `@keyframes ${name} {\n`;
 
     for( const progressKey in frames ) {
-      ruleText+= `  ${progressKey} {\n`;
-
       const cssProperties= frames[progressKey];
-      for( const propertyKey in cssProperties ) {
-        const propertyValue= cssProperties[propertyKey];
-        ruleText+= `    ${camelCaseToKebabCase( propertyKey )}: ${propertyValue};\n`;
-      }
-      ruleText+= '  }\n';
+      ruleText+= serializeCSSProperties(progressKey, cssProperties);
     }
 
     ruleText+= '}';
     styleSheet().insertRule( ruleText );
   }
 
+  function insertStyleRules( rules ) {
+    for( const ruleName in rules ) {
+      const cssProperties= rules[ruleName];
+      styleSheet().insertRule( serializeCSSProperties(ruleName, cssProperties) );
+    }
+  }
+
+  function isSameDay(a, b) {
+    return a.getFullYear() === b.getFullYear() &&
+      a.getMonth() === b.getMonth() &&
+      a.getDate() === b.getDate();
+  }
+  
+  function formatTime( date ) {
+    const weekDays= ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const months= ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Nov', 'Dec'];
+    const oneDayMillis= 24*60*60*1000;
+    let day= '';
+    const today= new Date();
+    if( isSameDay(date, today) ) {
+      day= 'Today';
+    } else if( isSameDay(date, new Date(today.getTime() - oneDayMillis) ) ) {
+      day= 'Yesterday';
+    } else if( isSameDay(date, new Date(today.getTime() + oneDayMillis) ) ) {
+      day= 'Tomorrow';
+    } else {
+      let ordinal= 'th';
+      const dayNum= date.getDate();
+      if(dayNum <= 3 || dayNum >= 21) {
+        switch (dayNum % 10) {
+          case 1:  ordinal= "st"; break;
+          case 2:  ordinal= "nd"; break;
+          case 3:  ordinal= "rd"; break;
+        }
+      }
+      day= `${weekDays[date.getDay()]} ${dayNum}${ordinal} ${months[date.getMonth()]} ${date.getFullYear()}`;
+    }
+  
+    return `${day} ${date.getHours()}:${(''+ date.getMinutes()).padStart(2, '0')}`;
+  }
+  
   class Settings {
     constructor() {
-      this.stagedRegistration= null;
-      this.activeRegistration= null;
       this.latencyAdjustment= 60;
       this.maxRefreshTime= 10;
       this.buttonModeName= ButtonMode.Register.name;
+      this.stateName= State.Ready.name;
+      this.registrations= [];
     }
 
     static async create() {
@@ -215,37 +343,43 @@
       GM.setValue('settings', this).then(() => {}).catch( e => console.error('Could not persist settings', e));
     }
 
-    setRegistration( state, row, date ) {
-      this.stagedRegistration= null;
-      this.activeRegistration= null;
-
-      const registration= {
-        lvaId: row ? extractLvaIdFromRow( row ) : null,
-        date: date ? date.toISOString() : null
-      };
-
-      if( registration.lvaId && registration.date ) {
-        if( state === State.Ready ) {
-          this.stagedRegistration= registration;
-
-        } else if( state === State.Pending ) {
-          this.activeRegistration= registration;
-        }
-      }
-
+    setState( state ) {
+      this.stateName= state.name;
       this.persist();
     }
 
-    registration() {
-      return this.activeRegistration || this.stagedRegistration;
+    state() {
+      return State[this.stateName];
     }
 
-    toState() {
-      if( this.activeRegistration && this.activeRegistration.lvaId && this.activeRegistration.date ) {
-        return State.Pending;
-      }
+    _filterThisPagesRegistration() {
+      this.registrations= this.registrations.filter(r => r.pageId !== currentPageId());
+    }
 
-      return State.Ready;
+    addRegistration( row, date ) {
+      // Only allow one registration per page
+      this._filterThisPagesRegistration();
+      this.registrations.push({
+        pageId: currentPageId(),
+        lvaId: extractLvaIdFromRow( row ),
+        date: date.toISOString()
+      });
+      this.persist();
+    }
+
+    removeRegistration( lvaId= null ) {
+      if( lvaId ) {
+        this.registrations= this.registrations.filter(r => r.lvaId !== lvaId);
+      } else {
+        this._filterThisPagesRegistration();
+      }
+      this.persist();
+    }
+
+    registrationsMap() {
+      const map= new Map();
+      this.registrations.forEach( r => map.set(r.pageId, Object.assign({}, r)) );
+      return map;
     }
 
     adjustedMillisUntil( date ) {
@@ -257,40 +391,11 @@
     }
   }
 
-  class ReloadTimer {
+  class UIElement {
     constructor() {
-      this.timer= null;
+      this._eventListeners= new Map();
     }
 
-    set( date ) {
-      // Clear old timer first
-      if( this.timer ) {
-        window.clearTimeout( this.timer );
-        this.timer= null;
-      }
-
-      if( date ) {
-        const millis= settings.adjustedMillisUntil( date );
-        if( millis < 0 ) {
-          // Stop refreshing after a specified number of seconds
-          if( millis < -1000 * settings.maxRefreshTime ) {
-            return;
-          }
-
-          return this._doRefresh();
-        }
-
-        println('Refresh page in', millis, 'ms');
-        this.timer= window.setTimeout(() => this._doRefresh(), millis);
-      }
-    }
-
-    _doRefresh() {
-      window.location.reload();
-    }
-  }
-
-  class UIElement extends EventTarget {
     getRoot() {
       return this.root;
     }
@@ -298,35 +403,41 @@
     insertBefore( otherElement ) {
       otherElement.parentElement.insertBefore( this.getRoot(), otherElement );
     }
+
+    addEventListener(type, func) {
+      let listeners= this._eventListeners.get(type);
+      if( !listeners ) {
+        this._eventListeners.set(type, listeners= new Set());
+      }
+      listeners.add(func);
+    }
+
+    dispatchEvent( ev ) {
+      const listeners= this._eventListeners.get(ev.type);
+      if( listeners ) {
+        listeners.forEach( func => {
+          try {
+            func( ev );
+          } catch(e) {
+            console.error(`Uncaught error in event '${ev.type}':`, e);
+          }
+        });
+      }
+    }
   }
 
   class Clock extends UIElement {
     constructor() {
       super();
 
-      this.signField= createStyledElement('span', {});
-      this.hourField= createStyledElement('span', {});
-      this.minuteField= createStyledElement('span', {});
-      this.secondField= createStyledElement('span', {});
-
-      this.root= createStyledElement('div', {
-        fontSize: '2rem',
-        fontFamily: 'Consolas,monospace',
-        display: 'flex',
-        justifyContent: 'center'
-      }, [
-        createStyledElement('div', {
-          whiteSpace: 'pre',
-          border: '7px grey double',
-          padding: '1rem',
-          width: 'max-content'
-        }, [
-          this.signField,
-          this.hourField, ' : ',
-          this.minuteField, ' : ',
-          this.secondField
-        ])
-      ]);
+      this.root= div({}, Style.Clock.container, 
+        div({}, Style.Clock.frame, 
+          this.signField= span(),
+          this.hourField= span(), ' : ',
+          this.minuteField= span(), ' : ',
+          this.secondField= span()
+        )
+      );
 
       this.targetTime= null;
       this.intervalTimer= window.setInterval( () => this._update(), 500 );
@@ -384,77 +495,50 @@
         to: { backgroundPosition: 'right bottom' }
       });
 
-      this.stateField= createStyledElement('div', {padding: '5px', borderRadius: '5px'});
-      this.lvaField= createStyledElement('input', {}, [], {type: 'text', title: 'Course id'});
-      this.timeField= createStyledElement('input', {}, [], {type: 'datetime-local', title: 'Registration time'});
-      this.latencyAdjustmentField= createStyledElement('input', {}, [], {type: 'number', title: 'Latency adjustement in milliseconds', min: 0, step: 10});
-      this.maxRefreshTimeField= createStyledElement('input', {}, [], {type: 'number', title: 'Number of seconds to attempt registration', min: 1});
-      this.buttonModeField= createStyledElement('select', {}, [], {title: 'Operation mode'});
-      this.selectLvaButton= createStyledElement('button', {}, ['Select Course']);
-      this.advancedSettingsButton= createStyledElement('button', {}, ['Advanced']);
-      this.startStopButton= createStyledElement('button', {}, ['Go!']);
-      this.clearErrorButton= createStyledElement('button', {display: 'none', float: 'right'}, ['Close']);
+      insertStyleRules(Style.Table);
 
-      this.advancedSettingsPane= createStyledElement('div', {
-        display: 'none',
-        flexDirection: 'row',
-        gap: '1rem'
-      }, [
-        this.maxRefreshTimeField,
-        this.latencyAdjustmentField,
-        this.buttonModeField
-      ]);
-
-      this.messageField= createStyledElement('div', {
-        border: '1px solid grey',
-        padding: '1rem',
-        fontStyle: 'italic',
-        display: 'none',
-        borderRadius: '5px',
-        animation: 'wu-bot-moving-gradient linear 2s infinite'
-      }, [
-        createStyledElement('span', {}),
-        this.clearErrorButton
-      ]);
-
-      this.clock= new Clock();
+      this.root= div({}, Style.mainContainer,
+        div({}, Style.topBar,
+          this.stateField= div({}, {padding: '5px', borderRadius: '5px'}),
+          this.lvaField= input({type: 'text', title: 'Course id'}),
+          this.timeField= input({type: 'datetime-local', title: 'Registration time'}),
+          this.advancedSettingsButton= button({}, {}, 'Advanced'),
+          this.selectLvaButton= button({}, {}, 'Select Course'),
+          this.startStopButton= button({}, {}, 'Go!')
+        ),
+        this.advancedSettingsPane= div({}, Style.topBar,
+          this.maxRefreshTimeField= input({type: 'number', title: 'Number of seconds to attempt registration', min: 1}),
+          this.latencyAdjustmentField= input({type: 'number', title: 'Latency adjustment in milliseconds', min: 0, step: 10}),
+          this.buttonModeField= createStyledElement('select', {title: 'Operation mode'}),
+        ),
+        div({}, {},
+          this.registrationsTable= createStyledElement('table', {class: 'schedule'}, {borderCollapse: 'collapse'},
+            tr({}, {},
+              th({}, {}, 'Course id'),
+              th({}, {}, 'Time'),
+              th({}, {}, 'Bot Tabs')
+            )
+          )
+        ),
+        this.clock= new Clock(),
+        this.messageField= div({}, Style.messageField,
+          span({}, {},
+            this.clearErrorButton= button({}, {display: 'none', float: 'right'}, 'Close')
+          )
+        )
+      );
 
       for( const name in ButtonMode ) {
         this.buttonModeField.appendChild(
-          createStyledElement('option', {}, [name], {value: name})
+          createStyledElement('option', {value: name}, {}, name)
         );
       }
-
-      this.root= createStyledElement('div', {
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '1rem',
-        margin: '1rem',
-        padding: '1rem',
-        boxShadow: '3px 3px 5px 2px #adadad',
-        borderRadius: '0.5rem'
-      }, [
-        createStyledElement('div', {
-          display: 'flex',
-          flexDirection: 'row',
-          gap: '1rem'
-        }, [
-          this.stateField,
-          this.lvaField,
-          this.timeField,
-          this.advancedSettingsButton,
-          this.selectLvaButton,
-          this.startStopButton
-        ]),
-        this.advancedSettingsPane,
-        this.clock,
-        this.messageField
-      ]);
 
       this.state= null;
       this.lvaRow= null;
       this.submitButton= null;
       this.date= null;
+      this.registrationMap= null;
 
       this._restoreStateFromSettings();
       this._setupLvaSelection();
@@ -462,6 +546,7 @@
       this._setupStartStopButton();
       this._setupClearErrorButton();
       this._setupAdvancedSettings();
+      this._setupRegistrationTable();
       this._setupTimedWarnings();
     }
 
@@ -469,8 +554,9 @@
       this.latencyAdjustmentField.value= settings.latencyAdjustment;
       this.maxRefreshTimeField.value= settings.maxRefreshTime;
       this.buttonModeField.value= settings.buttonMode().name;
+      this.registrationMap= settings.registrationsMap();
 
-      const registration= settings.registration();
+      const registration= this.registrationMap.get(currentPageId());
       if( !registration ) {
         this._setLvaRow( null, true );
         this._setDate( null );
@@ -478,78 +564,26 @@
         return;
       }
 
-      if( registration.lvaId ) {
-        const row= findLvaRowById( registration.lvaId );
-        if( !row ) {
-          this._showError(`Could not find a course with the id '${registration.lvaId}'`);
-          this._setState( State.Ready );
-          return;
-        }
-
-        // Don't try to auto-detect the date
-        this._setLvaRow( row, true );
-      }
-
-      if( registration.date ) {
-        this._setDate( new Date( registration.date ), true );
-      }
-
-      this._setState( settings.toState(), true );
-    }
-
-    _handlePendingState( restoreState= false ) {
-      if( !this.date || !this.lvaRow ) {
-        this._showError('Missing course data or registration time data. Cannot register.');
-        this._setState( State.Error );
-        return;
-      }
-
-      // Check if the button in the 'after' state (now registered) exists -> registration was successfull
-      if( this._checkSubmitButton( true ) ) {
-        this._showMessage( 'Registration successfull. :^)' );
+      if( !registration.lvaId || !registration.date ) {
+        this._showError(`Stored registration entry is missing values`);
         this._setState( State.Ready );
         return;
       }
 
-      // Check if the button in the 'before' state (not registered yet) exists -> error out if not
-      if( !this._checkSubmitButton( false ) ) {
-        this._showError('Wrong registration mode for this submit button.');
-        this._setState( State.Error );
+      const row= findLvaRowById( registration.lvaId );
+      if( !row ) {
+        this._showError(`Could not find a course with the id '${registration.lvaId}'`);
+        this._setState( State.Ready );
         return;
       }
 
-      // Time is already past target time -> try to do the registration
-      const millis= settings.adjustedMillisUntil( this.date );
-      if( millis < 0 ) {
-        // It is too late -> do not try to refresh again and bail out to ready state
-        if( millis < -1000* settings.maxRefreshTime ) {
-          // When restoring the state during a reload (currently trying to reload) -> show error
-          if( restoreState ) {
-            this._showError( `Could not register over a span of ${settings.maxRefreshTime} seconds. Aborting.` );
-            this._setState( State.Error );
+      // Don't try to auto-detect the date
+      this._setLvaRow( row, true );
+      this._setDate( new Date( registration.date ), true );
 
-          // Otherwise the user clicked the 'Go' button -> only show warning
-          } else {
-            this._showMessage( `Registration started more than ${settings.maxRefreshTime} seconds ago` );
-            this._setState( State.Ready );
-          }
-          return;
-        }
-
-        // Do the registration
-        if( !this.submitButton.disabled ) {
-          this.submitButton.style.backgroundColor= Color.Pending;
-          this.submitButton.click();
-          return;
-        }
-      }
-
-      // Time is before target time or no button was found yet
-      // Prime the refresh timer
-      reloadTimer.set( this.date );
-      return;
+      this._setState( settings.state(), true );
     }
-
+    
     _setupLvaSelection() {
       // Setup event handler for the lva id text field
       this.lvaField.addEventListener('keydown', e => {
@@ -618,7 +652,7 @@
         });
       }
     }
-
+    
     _setupDateSelection() {
       this.timeField.addEventListener('input', () => {
         if( this.state !== State.Ready ) {
@@ -636,8 +670,8 @@
           this._setState( State.Ready );
 
         } else if( this.state === State.Ready ) {
-          if( !this.date || !this.lvaRow ) {
-            this._showError('Missing course or date!')
+          if( !this.registrationMap.size ) {
+            this._showError('No registrations scheduled!')
             return;
           }
 
@@ -645,16 +679,16 @@
         }
 
         // Save the state change
-        this._updateSettings();
+        settings.setState(this.state);
       });
     }
 
     _setupClearErrorButton() {
       this.clearErrorButton.addEventListener('click', () => {
+        settings.setState( State.Ready );
         this._setState( State.Ready );
         this.clearErrorButton.style.display= 'none';
         this._showMessage();
-        this._updateSettings();
       });
     }
 
@@ -664,6 +698,7 @@
         const settingsShown= this.advancedSettingsPane.style.display === 'flex';
         this.advancedSettingsPane.style.display= settingsShown ? 'none' : 'flex';
       });
+      this.advancedSettingsPane.style.display= 'none';
 
       this.latencyAdjustmentField.addEventListener('input', () => this._updateAdvancedSettings());
       this.maxRefreshTimeField.addEventListener('input', () => this._updateAdvancedSettings());
@@ -674,14 +709,52 @@
       this.clock.addEventListener('tick', e => {
         // Only 60 secs left and a course is selected
         if( e.detail.isBefore && e.detail.secs < 60 ) {
-          if( this.submitButton && this.state !== State.Pending && !this._currentlyShowsMessage() ) {
+          if( this.registrationMap.size && this.state !== State.Pending && !this._currentlyShowsMessage() ) {
             this._showWarning(
-              'You have selected a course where registration starts in less than 60 seconds.' +
+              'You have scheduled a registration where registration starts in less than 60 seconds.' +
               "Press 'Go!' to enable automatic registration!"
             );
           }
         }
       });
+    }
+
+    _setupRegistrationTable() {
+      while(this.registrationsTable.rows.length > 1) {
+        this.registrationsTable.deleteRow(1);
+      }
+
+      this.registrationMap.forEach( registration => {
+        const row= this.registrationsTable.insertRow();
+
+        const url= new URL(window.location);
+        url.searchParams.set('SPP', registration.pageId);
+        row.insertCell().appendChild(
+          createStyledElement('a', {href: url.toString()}, {},
+            `${registration.lvaId}`,
+            span({}, {fontSize: '0.6rem'}, '🔗')
+          )
+        );
+        row.insertCell().innerText= formatTime( new Date(registration.date) );
+        row.insertCell();
+
+        if( registration.pageId === currentPageId() ) {
+          row.style.backgroundColor= Color.ActiveRow;
+        }
+      });
+
+      this.registrationsTable.parentNode.style.display= this.registrationMap.size ? 'flex' : 'none';
+    }
+
+    _updateRegistrationsTable() {
+      if( this.lvaRow && this.date ) {
+        settings.addRegistration(this.lvaRow, this.date);
+      } else {
+        settings.removeRegistration();
+      }
+
+      this.registrationMap= settings.registrationsMap();
+      this._setupRegistrationTable();
     }
 
     _updateAdvancedSettings() {
@@ -703,7 +776,7 @@
       this.stateField.innerText= state.text;
       this.stateField.style.backgroundColor= state.color;
       this.clock.show( false );
-      reloadTimer.set( null );
+      //TODO reloadTimer.set( null );
 
       switch( this.state ) {
         case State.Pending:
@@ -712,7 +785,7 @@
           this._showMessage();
           this.startStopButton.disabled= false;
           this.startStopButton.innerText= 'Stop!';
-          this._handlePendingState( ...args );
+          //TODO this._handlePendingState( ...args );
           break;
 
         case State.Selecting:
@@ -730,22 +803,18 @@
 
         case State.Ready:
           this._enableFields( true );
-          this.clock.show( !!settings.registration() );
+          this.clock.show( this.registrationMap.has(currentPageId()) );
           this.startStopButton.innerText= 'Go!';
           this.selectLvaButton.innerText= 'Select course';
           break;
       }
     }
 
-    _updateSettings() {
-      settings.setRegistration( this.state, this.lvaRow, this.date );
-    }
-
     _setDate( date, restoreState= false ) {
       this.date= date;
 
       if( !restoreState ) {
-        this._updateSettings();
+        this._updateRegistrationsTable();
       }
 
       if( !this.date ) {
@@ -755,7 +824,17 @@
       }
 
       this.timeField.value= dateToLocalIsoString( this.date );
-      this.clock.setTargetTime( this.date );
+
+      // Show the closest time on the clock as the target time
+      let targetDate= this.date;
+      this.registrationMap.forEach( registration => {
+        const registrationDate= new Date(registration.date);
+        if( registrationDate.getTime() < targetDate.getTime() ) {
+          targetDate= registrationDate;
+        }
+      });
+
+      this.clock.setTargetTime( targetDate );
       this.clock.show();
     }
 
@@ -812,7 +891,7 @@
 
       if( !restoreState ) {
         // Update settings after the date was auto-detected
-        this._updateSettings();
+        this._updateRegistrationsTable();
       }
     }
 
@@ -845,10 +924,24 @@
     }
   }
 
+  class BotDisplay extends UIElement {
+    constructor() {
+      super();
+
+      this.root= div({}, Style.mainContainer,
+        div({}, {}, 
+          'This browser tab is a remote controlled bot instance. '+
+          'Use the main browser tab with the bot user interface to do your configuration.'
+        ),
+        this.clock= new Clock()
+      )
+    }
+  }
+
   /* Main entry point */
 
   // Check if this is the correct page
-  if( !mainTable() || !extractNavbarFirstItem() || !extractNavbarFirstItem().classList.contains('thd') ) {
+  if( !mainTable() || !extractNavbarFirstItem() || !extractNavbarFirstItem().classList.contains('thd') || !currentPageId() ) {
     println('off');
     return;
   }
@@ -856,7 +949,7 @@
   println('on');
 
   const settings= await Settings.create();
-  const reloadTimer= new ReloadTimer();
   const ui= new UserInterface();
   ui.insertBefore( mainTable() );
+    //const reloadTimer= new ReloadTimer();
 })();
