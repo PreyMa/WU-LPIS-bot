@@ -174,6 +174,12 @@
     );
   }
 
+  function urlToPageId( pageId ) {
+    const url= new URL(window.location);
+    url.searchParams.set('SPP', pageId);
+    return url;
+  }
+
   let cachedPageId= null;
   function currentPageId() {
     if( cachedPageId ) {
@@ -727,16 +733,21 @@
       this.registrationMap.forEach( registration => {
         const row= this.registrationsTable.insertRow();
 
-        const url= new URL(window.location);
-        url.searchParams.set('SPP', registration.pageId);
+        // Cell with the lva id as a link to the page
         row.insertCell().appendChild(
-          createStyledElement('a', {href: url.toString()}, {},
+          createStyledElement('a', {href: urlToPageId(registration.pageId).toString()}, {},
             `${registration.lvaId}`,
             span({}, {fontSize: '0.6rem'}, '🔗')
           )
         );
+        // Cell with registration time
         row.insertCell().innerText= formatTime( new Date(registration.date) );
         row.insertCell();
+
+        // Cell with a button for removing a LVA
+        const removeButton= button({}, {}, 'Remove');
+        row.insertCell().appendChild( removeButton );
+        removeButton.addEventListener('click', () => this._removeLvaFromTable(registration.lvaId));
 
         if( registration.pageId === currentPageId() ) {
           row.style.backgroundColor= Color.ActiveRow;
@@ -755,6 +766,21 @@
 
       this.registrationMap= settings.registrationsMap();
       this._setupRegistrationTable();
+    }
+
+    _removeLvaFromTable( lvaId ) {
+      if( this.state === State.Pending ) {
+        return;
+      }
+
+      settings.removeRegistration(lvaId);
+      if( this.lvaRow && lvaId === extractLvaIdFromRow(this.lvaRow) ) {
+        this._setLvaRow( null, true );
+        this._setDate( null );  // This also updates the table
+        return;
+      }
+
+      this._updateRegistrationsTable();
     }
 
     _updateAdvancedSettings() {
