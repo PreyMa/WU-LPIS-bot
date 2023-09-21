@@ -719,7 +719,7 @@
       if( !registration ) {
         this._setLvaRow( null, true );
         this._setDate( null );
-        this._setState( State.Ready );
+        this._setState( settings.state(), true );
         return;
       }
 
