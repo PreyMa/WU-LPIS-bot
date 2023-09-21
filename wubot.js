@@ -746,7 +746,7 @@
     _setupLvaSelection() {
       // Setup event handler for the lva id text field
       this.lvaField.addEventListener('keydown', e => {
-        if( e.keyCode === 13 ) {
+        if( e.code === 'Enter' ) {
           if( this.state !== State.Ready ) {
             console.error('bad state for selecting', this.state);
             return;
