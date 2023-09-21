@@ -23,6 +23,10 @@
     Pending: 'yellow'
   };
 
+  /**
+   * @typedef {{name:string, text:string, color:string}} State
+   * @type {{Ready:State, Error:State, Pending:State, Selecting:State}}
+   */
   const State= {
     Ready: {name: 'Ready', text: '👓 Ready', color: 'lightgreen'},
     Error: {name: 'Error', text: '❌ Error!', color: Color.ErrorBox},
@@ -88,11 +92,19 @@
     console.log( '[WU LPIS Registration Bot]', ...args );
   }
 
+  /**
+   * Returns the anchor element containing 'Einzelanmeldung'
+   * @returns {HTMLAnchorElement|null}
+   */
   function extractNavbarFirstItem() {
     return document.querySelector('body > a[title="PRF/LVP/PI-Anmeldung"]');
   }
 
   let mainTableElement= null;
+  /**
+   * Searches for the main table listing all the LVAs
+   * @returns {HTMLTableElement|null}
+   */
   function mainTable() {
     if( mainTableElement ) {
       return mainTableElement;
@@ -120,6 +132,11 @@
     return null;
   }
 
+  /**
+   * Finds the table row for a LVA by its id shown in the first table cell
+   * @param {string} id 
+   * @returns {HTMLTableRowElement|null}
+   */
   function findLvaRowById( id ) {
     // Skip the <tr> inside the <thead> by starting with index 1
     const rows= mainTable().rows;
@@ -133,15 +150,30 @@
     return null;
   }
 
+  /**
+   * The id of a LVA by its table row element
+   * @param {HTMLTableRowElement} row 
+   * @returns {string}
+   */
   function extractLvaIdFromRow( row ) {
     return row.firstElementChild.innerText.split('\n')[0].trim();
   }
 
+  /**
+   * Searches for a submit element in a LVA table row
+   * @param {HTMLTableRowElement} row 
+   * @returns {HTMLButtonElement|HTMLAnchorElement|null}
+   */
   function extractSubmitButtonFromRow( row ) {
     return row.querySelector('td.action form input[type="submit"]') ||
            row.querySelector('td.action a');
   }
 
+  /**
+   * Searches for and parses the registration start date of a LVA by its row
+   * @param {HTMLTableRowElement} row 
+   * @returns {Date|null}
+   */
   function extractDateFromRow( row ) {
     const text= row.querySelector('td.action .timestamp').innerText.trim();
     if( !/^\w+\s+\d{1,2}\.\d{1,2}\.\d{4}\s+\d{1,2}:\d{1,2}$/gm.test( text ) ) {
@@ -174,6 +206,12 @@
     );
   }
 
+  /**
+   * Creates an up-to-date URL to a registration page by its id. The current
+   * URL is taken and the SPP query param is modified to create the new URL
+   * @param {string|number} pageId 
+   * @returns {URL}
+   */
   function urlToPageId( pageId ) {
     const url= new URL(window.location);
     url.searchParams.set('SPP', pageId);
@@ -181,6 +219,10 @@
   }
 
   let cachedPageId= null;
+  /**
+   * Reads and caches the page id of the current page
+   * @returns {string|null}
+   */
   function currentPageId() {
     if( cachedPageId ) {
       return cachedPageId;
@@ -189,6 +231,15 @@
     return cachedPageId= new URL(window.location).searchParams.get('SPP');
   }
 
+  /**
+   * Creates an HTML element by its node name and sets attributes & style
+   * Child elements are automatically added in order
+   * @param {string} type 
+   * @param {{}} attributes 
+   * @param {{}} style 
+   * @param  {...HTMLElement|UIElement|string} children 
+   * @returns {HTMLElement}
+   */
   function createStyledElement( type, attributes, style, ...children ) {
     const element= document.createElement( type );
     Object.assign( element.style, style );
@@ -213,34 +264,74 @@
     return element;
   }
 
+  /**
+   * Creates a <div> element with the interface of 'createStyledElement(...)'
+   * @param  {...HTMLElement|UIElement|string} children 
+   * @returns {HTMLDivElement}
+   */
   function div(attributes= {}, style= {}, ...children) {
     return createStyledElement( 'div', attributes, style, ...children );
   }
 
+  /**
+   * Creates a <input> element with the interface of 'createStyledElement(...)'
+   * @param  {...HTMLElement|UIElement|string} children 
+   * @returns {HTMLInputElement}
+   */
   function input(attributes= {}, style= {}, ...children) {
     return createStyledElement( 'input', attributes, style, ...children );
   }
-
+  
+  /**
+   * Creates a <button> element with the interface of 'createStyledElement(...)'
+   * @param  {...HTMLElement|UIElement|string} children 
+   * @returns {HTMLButtonElement}
+   */
   function button(attributes= {}, style= {}, ...children) {
     return createStyledElement( 'button', attributes, style, ...children );
   }
-
+  
+  /**
+   * Creates a <span> element with the interface of 'createStyledElement(...)'
+   * @param  {...HTMLElement|UIElement|string} children 
+   * @returns {HTMLSpanElement}
+   */
   function span(attributes= {}, style= {}, ...children) {
     return createStyledElement( 'span', attributes, style, ...children );
   }
-
+  
+  /**
+   * Creates a <tr> element with the interface of 'createStyledElement(...)'
+   * @param  {...HTMLElement|UIElement|string} children 
+   * @returns {HTMLTableRowElement}
+   */
   function tr(attributes= {}, style= {}, ...children) {
     return createStyledElement( 'tr', attributes, style, ...children );
   }
-
+  
+  /**
+   * Creates a <th> element with the interface of 'createStyledElement(...)'
+   * @param  {...HTMLElement|UIElement|string} children 
+   * @returns {HTMLTableHeaderCellElement}
+   */
   function th(attributes= {}, style= {}, ...children) {
     return createStyledElement( 'th', attributes, style, ...children );
   }
 
+  /**
+   * Converts a date with any timezone offset to an ISO string with local timezone offset
+   * @param {Date} date 
+   * @returns {string}
+   */
   function dateToLocalIsoString( date ) {
     return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0,-1)
   }
 
+  /**
+   * Converts a string in 'CamelCase' to a string in 'kebab-case'
+   * @param {string} str 
+   * @returns {string}
+   */
   function camelCaseToKebabCase( str ) {
     return str.split('').map(
       (char, idx) => (char === char.toUpperCase() && idx > 0 ? '-' : '')+ char.toLowerCase()
@@ -248,6 +339,11 @@
   }
 
   let dynamicStyleSheet= null;
+  /**
+   * Return a dynamic css style sheet. If necessary one is dynamically generated and attached
+   * to the document's header
+   * @returns {CSSStyleSheet}
+   */
   function styleSheet() {
     if( dynamicStyleSheet ) {
       return dynamicStyleSheet;
@@ -259,6 +355,12 @@
     return dynamicStyleSheet;
   }
 
+  /**
+   * Prints a CSS rule based on a selector name and css property-value-pairs
+   * @param {string} selectorName 
+   * @param {{}} cssProperties 
+   * @returns {string}
+   */
   function serializeCSSProperties(selectorName, cssProperties) {
     let text= `  ${selectorName} {\n`;
 
@@ -269,6 +371,11 @@
     return text+ '  }\n';
   }
   
+  /**
+   * Create and insert a CSS animation keyframes rule into the dynamic style sheet
+   * @param {string} name 
+   * @param {{}} frames 
+   */
   function createAnimationKeyframes( name, frames ) {
     let ruleText= `@keyframes ${name} {\n`;
 
@@ -281,6 +388,10 @@
     styleSheet().insertRule( ruleText );
   }
 
+  /**
+   * Insert CSS rules into the dynamic style sheet
+   * @param {{}} rules 
+   */
   function insertStyleRules( rules ) {
     for( const ruleName in rules ) {
       const cssProperties= rules[ruleName];
@@ -288,12 +399,19 @@
     }
   }
 
+  /**
+   * Checks if two dates are on the same day, ignoring the time of day
+   * @param {Date} a 
+   * @param {Date} b 
+   * @returns {boolean}
+   */
   function isSameDay(a, b) {
     return a.getFullYear() === b.getFullYear() &&
       a.getMonth() === b.getMonth() &&
       a.getDate() === b.getDate();
   }
   
+  /**
   function formatTime( date ) {
     const weekDays= ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const months= ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Nov', 'Dec'];
@@ -349,11 +467,17 @@
       GM.setValue('settings', this).then(() => {}).catch( e => console.error('Could not persist settings', e));
     }
 
+    /**
+     * @param {State} state 
+     */
     setState( state ) {
       this.stateName= state.name;
       this.persist();
     }
 
+    /**
+     * @returns {State}
+     */
     state() {
       return State[this.stateName];
     }
@@ -362,6 +486,10 @@
       this.registrations= this.registrations.filter(r => r.pageId !== currentPageId());
     }
 
+    /**
+     * @param {HTMLTableRowElement} row 
+     * @param {Date} date 
+     */
     addRegistration( row, date ) {
       // Only allow one registration per page
       this._filterThisPagesRegistration();
@@ -373,6 +501,9 @@
       this.persist();
     }
 
+    /**
+     * @param {string?} lvaId 
+     */
     removeRegistration( lvaId= null ) {
       if( lvaId ) {
         this.registrations= this.registrations.filter(r => r.lvaId !== lvaId);
@@ -382,12 +513,20 @@
       this.persist();
     }
 
+    /**
+     * @typedef {{pageId:string, lvaId:string, date:string}} Registration
+     * @returns {Map<string,Registration>}
+     */
     registrationsMap() {
       const map= new Map();
       this.registrations.forEach( r => map.set(r.pageId, Object.assign({}, r)) );
       return map;
     }
 
+    /**
+     * @param {Date} date 
+     * @returns {number}
+     */
     adjustedMillisUntil( date ) {
       return (date.getTime() - settings.latencyAdjustment) - Date.now();
     }
@@ -399,17 +538,28 @@
 
   class UIElement {
     constructor() {
+      /** @type {Map<string,Set<function(Event)>>} */
       this._eventListeners= new Map();
     }
 
+    /**
+     * @returns {HTMLElement}
+     */
     getRoot() {
       return this.root;
     }
 
+    /**
+     * @param {Node} otherElement 
+     */
     insertBefore( otherElement ) {
       otherElement.parentElement.insertBefore( this.getRoot(), otherElement );
     }
 
+    /**
+     * @param {string} type 
+     * @param {function(Event)} func 
+     */
     addEventListener(type, func) {
       let listeners= this._eventListeners.get(type);
       if( !listeners ) {
@@ -418,6 +568,9 @@
       listeners.add(func);
     }
 
+    /**
+     * @param {Event} ev 
+     */
     dispatchEvent( ev ) {
       const listeners= this._eventListeners.get(ev.type);
       if( listeners ) {
