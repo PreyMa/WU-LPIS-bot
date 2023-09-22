@@ -1328,6 +1328,8 @@
       this.messageChannel= messageChannel;
       this.clients= null;
 
+      document.title= '🏠 '+ document.title;
+
       this._restoreStateFromSettings();
       this._setupLvaSelection();
       this._setupDateSelection();
@@ -1909,7 +1911,7 @@
         ),
         div({}, {}, 
           'This browser tab is a remote controlled bot instance. '+
-          'Use the main browser tab with the bot user interface to do your configuration.'
+          'Use the main browser tab with the bot user interface (indicated by 🏠) to do your configuration.'
         ),
         this.clock= new Clock()
       );
@@ -2023,6 +2025,9 @@
       this.status= status;
       this.statusField.innerText= status.text;
       this.statusField.style.backgroundColor= status.color;
+
+      const titleSymbol= this.status === ClientStatus.Error ? '❌' : '🛠️';
+      document.title= titleSymbol+ ' '+ document.title.substring(document.title.indexOf('L'));
     }
   }
 
