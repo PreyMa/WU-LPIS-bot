@@ -278,7 +278,7 @@
       return cachedPageId;
     }
 
-    const match= window.location.search.match(/SPP=(?<spp>\w+);/);
+    const match= window.location.search.match(/SPP=(?<spp>\w+);?/);
     if( !match || !match.groups.spp ) {
       return null;
     }
