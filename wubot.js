@@ -830,6 +830,9 @@
 
       /** @type {function(ChannelMessage<BotClientStatus>):void | null} */
       this.onStatusMessage= null;
+
+      /** @type {function(ChannelMessage<{}>):void | null} */
+      this.onHeartbeat= null;
     }
 
     /** @param{ChannelMessage<any>} message */
@@ -843,6 +846,11 @@
         case 'status':
           if( this.onStatusMessage ) {
             this.onStatusMessage( message );
+          }
+          this._respond(message, 'ok');
+        case 'heartbeat':
+          if( this.onHeartbeat ) {
+            this.onHeartbeat( message );
           }
           this._respond(message, 'ok');
           break;
@@ -949,7 +957,7 @@
       this._initializeFromSession();
       
       if( !this.heartbeatInterval ) {
-        //TODO: this.heartbeatInterval= window.setInterval(() => this._sendMessage('server', 'heartbeat'), 1000);
+        this.heartbeatInterval= window.setInterval(() => this._sendMessage('server', 'heartbeat'), 2000);
       }
 
       this._sendMessage('server', 'status', this._statusPacket());
@@ -1339,6 +1347,7 @@
       this._setupRegistrationTable();
       this._setupTimedWarnings();
       this._setupMessageChannelEvents();
+      this._setupClientHeartbeatCheck();
     }
 
     _restoreStateFromSettings() {
@@ -1592,6 +1601,7 @@
         }
       });
     }
+
     _setupMessageChannelEvents() {
       this.messageChannel.onStatusMessage= message => {
         if( !this.clients ) {
@@ -1603,6 +1613,31 @@
           client.updateStatus( message );
         }
       };
+
+      this.messageChannel.onHeartbeat= message => {
+        if( !this.clients ) {
+          return;
+        }
+
+        const client= this.clients.get(message.senderUuid);
+        if( client ) {
+          client.heartbeat();
+        }
+      };
+    }
+
+    _setupClientHeartbeatCheck() {
+      window.setInterval(() => {
+        if( !this.clients ) {
+          return;
+        }
+
+        this.clients.forEach(client => {
+          if( !client.hadEventForMillis(4000) ) {
+            client.updateStatus( null );
+          }
+        });
+      }, 1000);
     }
 
     _setupRegistrationTable() {
@@ -1851,6 +1886,8 @@
       );
 
       this.clientUuid= uuid;
+      this.lastEvent= null;
+
       if( lvaId && registrationTime && !isNaN(registrationTime) ) {
         this.lvaId= lvaId;  
         this.registrationTime= registrationTime;
@@ -1882,6 +1919,8 @@
         return;
       }
 
+      this.heartbeat();
+
       const {status: statusName, lvaId, registrationTime: registrationTimeString}= message.data;
       const registrationTime= new Date(registrationTimeString);
       if( !lvaId || !registrationTimeString || isNaN(registrationTime)) {
@@ -1898,6 +1937,14 @@
       }
 
       this.setStatus( ClientStatus[statusName] );
+    }
+
+    heartbeat() {
+      this.lastEvent= Date.now();
+    }
+
+    hadEventForMillis( time ) {
+      return !this.lastEvent || Date.now() <= this.lastEvent+ time;
     }
   }
 
