@@ -1127,6 +1127,39 @@
     }
   }
 
+  class ReloadTimer {
+    constructor() {
+      this.timer= null;
+    }
+
+    set( date ) {
+      // Clear old timer first
+      if( this.timer ) {
+        window.clearTimeout( this.timer );
+        this.timer= null;
+      }
+
+      if( date ) {
+        const millis= settings.adjustedMillisUntil( date );
+        if( millis < 0 ) {
+          // Stop refreshing after a specified number of seconds
+          if( millis < -1000 * settings.maxRefreshTime ) {
+            return;
+          }
+
+          return this._doRefresh();
+        }
+
+        println('Refresh page in', millis, 'ms');
+        this.timer= window.setTimeout(() => this._doRefresh(), millis);
+      }
+    }
+
+    _doRefresh() {
+      window.location.reload();
+    }
+  }
+
   class UIElement {
     constructor() {
       /** @type {Map<string,Set<function(Event)>>} */
@@ -1659,7 +1692,6 @@
       this.stateField.innerText= state.text;
       this.stateField.style.backgroundColor= state.color;
       this.clock.show( false );
-      //TODO reloadTimer.set( null );
 
       switch( this.state ) {
         case State.Pending:
@@ -1885,6 +1917,7 @@
       this.status= null;
       this.lvaRow= null;
       this.submitButton= null;
+      this.reloadTimer= new ReloadTimer();
 
       this.setStatus( ClientStatus.Disconnected );
 
@@ -1950,6 +1983,10 @@
         }
       }
 
+      // This might refresh the page immediately, but that is fine as
+      // we already bailed if we are passed max refresh time
+      this.reloadTimer.set( registrationTime );
+
       this.setStatus( ClientStatus.Pending );
       return true;
     }
@@ -2006,7 +2043,6 @@
   
   const settings= await Settings.create();
   if( messageChannel.isServer() ) {
-    //const reloadTimer= new ReloadTimer();
     const ui= new UserInterface( messageChannel );
     ui.insertBefore( mainTable() );
   } else {
