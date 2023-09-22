@@ -264,7 +264,7 @@
    */
   function urlToPageId( pageId ) {
     const url= new URL(window.location);
-    url.searchParams.set('SPP', pageId);
+    url.search= url.search.replace(/SPP=\w+(;?)/, `SPP=${pageId}$1`);
     return url;
   }
 
@@ -278,7 +278,12 @@
       return cachedPageId;
     }
 
-    return cachedPageId= new URL(window.location).searchParams.get('SPP');
+    const match= window.location.search.match(/SPP=(?<spp>\w+);/);
+    if( !match || !match.groups.spp ) {
+      return null;
+    }
+
+    return cachedPageId= match.groups.spp;
   }
 
   /**
