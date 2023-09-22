@@ -8,6 +8,7 @@
 // @icon         data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgBAMAAACBVGfHAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAASUExURQAAAH9/f9PT0+0cJO/v7////4KSIg8AAACKSURBVCjPhdFRDoAgCABQr4DhAewGjXUANi/QR/e/SoqkVLr40HyDZOhSDSL9cLrvb6BfYDQAAMjIeVNYiAoQbRMAEwJ+bREVlGKDnJuPeYmzEsmwEM7jWRKcBdYMKcEK/R8FQG6JdYURsO0DR9A7Bf9qPXjTeokOQWMO9wD9ZB6fIcvD1VdKA7gAUO5YI8LDmx0AAAAASUVORK5CYII=
 // @grant        GM.getValue
 // @grant        GM.setValue
+// @grant        GM.openInTab
 // @noframes
 // ==/UserScript==
 
@@ -25,13 +26,25 @@
 
   /**
    * @typedef {{name:string, text:string, color:string}} State
-   * @type {{Ready:State, Error:State, Pending:State, Selecting:State}}
+   * @type {{Ready:State, Error:State, Pending:State, Starting:State, Selecting:State}}
    */
   const State= {
     Ready: {name: 'Ready', text: '👓 Ready', color: 'lightgreen'},
     Error: {name: 'Error', text: '❌ Error!', color: Color.ErrorBox},
     Pending: {name: 'Pending', text: '⏳ Pending...', color: Color.Pending},
+    Starting: {name: 'Starting', text: '🏃‍♂️ Starting...', color: Color.Pending},
     Selecting: {name: 'Selecting', text: '👆 Selecting...', color: Color.HoveredRow}
+  }
+
+  /**
+   * @typedef {{name:string, text:string, color:string}} ClientStatus
+   * @type {{Disconnected:ClientStatus, Error:ClientStatus, Pending:ClientStatus, Done:ClientStatus}}
+   */
+  const ClientStatus= {
+    Disconnected: {name: 'Disconnected', text: '📡 Disconnected', color: 'lightgrey'},
+    Error: {name: 'Error', text: '❌ Error!', color: Color.ErrorBox},
+    Pending: {name: 'Pending', text: '⏳ Pending...', color: Color.Pending},
+    Done: {name: 'Done', text: '👍 Done', color: 'lightgreen'},
   }
 
   const ButtonMode= {
@@ -90,6 +103,30 @@
 
   function println( ...args ) {
     console.log( '[WU LPIS Registration Bot]', ...args );
+  }
+
+  /**
+   * @returns {never}
+   */
+  function abstractMethod() {
+    throw Error('abstract method');
+  }
+
+  function assert(cond, msg= 'Assertion failed') {
+    if(!cond) {
+      throw Error(msg);
+    }
+  }
+
+  /**
+   * Creates a promise that resolves after the specified number of milliseconds
+   * @param {number} millis 
+   * @returns {Promise<void>}
+   */
+  async function asyncSleep(millis) {
+    return new Promise( resolve => {
+      window.setTimeout(() => resolve(), millis);
+    });
   }
 
   /**
@@ -204,6 +241,19 @@
       0, // seconds
       0  // millis
     );
+  }
+
+  /**
+   * Check if the provided submit (button) element has the expected state
+   * @param {Settings} settings 
+   * @param {HTMLAnchorElement|HTMLButtonElement} submitButton 
+   * @param {boolean} useAfterText 
+   * @returns {boolean}
+   */
+  function checkSubmitButton(settings, submitButton, useAfterText= false) {
+    const buttonText= submitButton.value || submitButton.innerText;
+    const expectedText= useAfterText ? settings.buttonMode().after : settings.buttonMode().before;
+    return buttonText.trim().toLowerCase() === expectedText;
   }
 
   /**
@@ -412,6 +462,10 @@
   }
   
   /**
+   * Nicely formats time and date objects
+   * @param {Date} date 
+   * @returns {string}
+   */
   function formatTime( date ) {
     const weekDays= ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const months= ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Nov', 'Dec'];
@@ -439,7 +493,544 @@
   
     return `${day} ${date.getHours()}:${(''+ date.getMinutes()).padStart(2, '0')}`;
   }
+
+  class Session {
+    static MessageChannelConfigKey= 'wu-lpis-bot-channel';
+    static BotInitMessageKey= 'wu-lpis-bot-init';
+    static BotRegistrationConfigKey= 'wu-lpis-bot-config';
+
+    constructor() {
+      this.messageChannelConfig= this._tryLoadKey(Session.MessageChannelConfigKey);
+      this.botInitMessage= this._tryLoadKey(Session.BotInitMessageKey);
+      this.botRegistrationConfig= this._tryLoadKey(Session.BotRegistrationConfigKey);
+
+      if(this.botRegistrationConfig && this.botRegistrationConfig.registrationTime) {
+        this.botRegistrationConfig.registrationTime= new Date(this.botRegistrationConfig.registrationTime);
+      }
+    }
+
+    _tryLoadKey(keyName) {
+      try {
+        return JSON.parse(sessionStorage.getItem(keyName));
+      } catch ( e ) {
+        console.error('Could not load data from session storage for key:', keyName, e);
+      }
+      return null;
+    }
+
+    channelConfig() {
+      return this.messageChannelConfig;
+    }
+
+    saveChannelConfig( data ) {
+      this.messageChannelConfig= data;
+      sessionStorage.setItem(Session.MessageChannelConfigKey, JSON.stringify(data));
+    }
+
+    initMessage() {
+      return this.botInitMessage;
+    }
+
+    saveInitMessage( data ) {
+      this.botInitMessage= data;
+      sessionStorage.setItem(Session.BotInitMessageKey, JSON.stringify(data));
+    }
+
+    clearInitMessage() {
+      this.botInitMessage= null;
+      sessionStorage.removeItem(Session.BotInitMessageKey);
+    }
+
+    registration() {
+      return this.botRegistrationConfig;
+    }
+
+    clearRegistration() {
+      this.botRegistrationConfig= null;
+      sessionStorage.removeItem(Session.BotRegistrationConfigKey);
+    }
+
+    saveRegistration( data ) {
+      this.botRegistrationConfig= data;
+      const serializeData= Object.assign({}, data);
+      serializeData.registrationTime= serializeData.registrationTime.toISOString();
+      sessionStorage.setItem(Session.BotRegistrationConfigKey, JSON.stringify(serializeData));
+    }
+  }
+
+  class TimeoutError extends Error {
+    constructor() {
+      super('Message channel timeout');
+    }
+  }
+
+  class PendingMessage {
+    constructor( resolverFunc, rejectorFunc, timeout, messageUuid, pendingMessagesMap ) {
+      this.resolverFunc= resolverFunc;
+      this.rejectorFunc= rejectorFunc;
+      this.messageUuid= messageUuid;
+      this.pendingMessagesMap= pendingMessagesMap;
+
+      this.timeoutHandle= window.setTimeout(() => this.onTimeout(), timeout);
+      this.pendingMessagesMap.set(messageUuid, this);
+    }
+
+    _delete() {
+      this.pendingMessagesMap.delete(this.messageUuid);
+    }
+
+    _clearTimeout() {
+      window.clearTimeout(this.timeoutHandle);
+    }
+
+    onResponse() { abstractMethod(); }
+    onTimeout() { abstractMethod(); }
+  }
+
+  class PendingSimpleMessage extends PendingMessage {
+    static createAndInsert(pendingMessages, messageUuid, resolverFunc, rejectorFunc, timeout) {
+      return new PendingSimpleMessage(resolverFunc, rejectorFunc, timeout, messageUuid, pendingMessages);
+    }
+
+    onResponse( response ) {
+      assert(response.responseUuid === this.messageUuid);
+      this._delete();
+      this._clearTimeout();
+      this.resolverFunc(response);
+    }
+
+    onTimeout() {
+      this._delete();
+      this.rejectorFunc(new TimeoutError());
+    }
+  }
+
+  class PendingBroadcastMessage extends PendingMessage {
+    constructor(resolverFunc, rejectorFunc, timeout, messageUuid, pendingMessages) {
+      super(resolverFunc, rejectorFunc, timeout, messageUuid, pendingMessages);
+      this.responses= [];
+    }
+
+    static createAndInsert(pendingMessages, messageUuid, resolverFunc, rejectorFunc, timeout) {
+      return new PendingBroadcastMessage(resolverFunc, rejectorFunc, timeout, messageUuid, pendingMessages);
+    }
+
+    onResponse( response ) {
+      assert(response.responseUuid === this.messageUuid);
+      this.responses.push(response);
+    }
+    
+    onTimeout() {
+      this._delete();
+      this.resolverFunc(this.responses);
+    }
+  }
   
+  class MessageChannel {
+    constructor(channel= null) {
+
+      if( channel instanceof MessageChannel ) {
+        this.pendingMessages= channel.pendingMessages;
+        this.uuid= channel.uuid;
+        this.serverUuid= channel.serverUuid;
+        this._attachChannel(channel.channel);
+        return;
+      }
+
+      /** @type {Map<string, PendingMessage>} */
+      this.pendingMessages= new Map();
+      this._attachChannel(new BroadcastChannel('wu-lpis-bot'));
+
+      const sessionData= session.channelConfig();
+
+      if( sessionData ) {
+        this.uuid= sessionData.uuid;
+        this.serverUuid= sessionData.serverUuid;
+      } else {
+        this.uuid= crypto.randomUUID();
+        this.serverUuid= null;
+        this._saveSession();
+      }
+    }
+
+    static async create() {
+      const channel= new MessageChannel();
+      await channel._detectServer();
+      return channel.isServer() ? new ServerChannel( channel ) : new ClientChannel( channel );
+    }
+
+    _attachChannel(channel) {
+      this.channel= channel;
+      this.channel.onmessage= m => this._handleMessage(m);
+      this.channel.onmessageerror= e => this._handleMessageError(e);
+    }
+
+    _saveSession() {
+      session.saveChannelConfig({
+        uuid: this.uuid,
+        serverUuid: this.serverUuid
+      });
+    }
+
+    /**
+     * 
+     * @typedef {{messageUuid:string, senderUuid:string, receiverUuid:string, responseUuid:string?, type:string, data:T}} ChannelMessage
+     * @template T
+     * @param {MessageEvent<ChannelMessage<any>>} m 
+     * @returns 
+     */
+    _handleMessage( m ) {
+      if( m.data.receiverUuid === this.uuid || m.data.receiverUuid === 'all' || (m.data.receiverUuid === 'server' && this.isServer())) {
+        console.log('-> Trace:', m.data);
+        if( m.data.responseUuid ) {
+          const messageHandle= this.pendingMessages.get(m.data.responseUuid);
+          if(!messageHandle) {
+            throw new Error('Response to unknown message uuid:', m);
+          }
+          messageHandle.onResponse(m.data);
+          return;
+        }
+        
+        this.onMessage(m.data);
+      }
+    }
+
+    /** @param{ChannelMessage<any>} m */
+    onMessage( m ) {
+      console.log('Unhandled incoming message by plain message channel:', m);
+    }
+
+    _handleMessageError( e ) {
+      console.error('Got message channel error:', e);
+    }
+
+    /**
+     * 
+     * @param {string} receiverUuid
+     * @param {string} type 
+     * @param {any} data 
+     * @param {number} timeout 
+     * @returns {Promise<ChannelMessage<any>>}
+     */
+    async _sendMessage(receiverUuid, type, data= {}, timeout= 1000) {
+      return new Promise((resolve, reject) => {
+        const messageUuid= crypto.randomUUID();
+        const packet= {
+          messageUuid,
+          senderUuid: this.uuid,
+          receiverUuid,
+          type,
+          data
+        };
+        this.channel.postMessage(packet);
+
+        console.log('<- Trace:', packet, new Error());
+
+        PendingSimpleMessage.createAndInsert(this.pendingMessages, messageUuid, resolve, reject, timeout);
+      });
+    }
+
+    /**
+     * 
+     * @param {string} type 
+     * @param {any} data 
+     * @param {number} timeout 
+     * @returns {[Promise<ChannelMessage<any>>]}
+     */
+    async _sendBroadcast(type, data= {}, timeout= 1000) {
+      return new Promise((resolve, reject) => {
+        const messageUuid= crypto.randomUUID();
+        const packet= {
+          messageUuid,
+          senderUuid: this.uuid,
+          receiverUuid: 'all',
+          type,
+          data
+        };
+        this.channel.postMessage(packet);
+
+        console.log('<- Trace:', packet, new Error());
+
+        PendingBroadcastMessage.createAndInsert(this.pendingMessages, messageUuid, resolve, reject, timeout);
+      });
+    }
+
+    /**
+     * 
+     * @param {ChannelMessage<any>} message 
+     * @param {string} type 
+     * @param {any} data 
+     */
+    _respond(message, type, data= {}) {
+      const packet= {
+        messageUuid: crypto.randomUUID(),
+        senderUuid: this.uuid,
+        receiverUuid: message.senderUuid,
+        responseUuid: message.messageUuid,
+        type,
+        data
+      };
+      this.channel.postMessage(packet);
+
+      console.log('<- Trace:', packet);
+    }
+
+    async _detectServer() {
+      try {
+        // This is the fast path so it can be determined immediately whether
+        // this is a client instance by finding a different server. In case 
+        // of an active registration sequence it is important to not introduce
+        // any unnecessary delays to client bots. It however does not really 
+        // matter for the server instance, so a more involved process follows
+        // if no other server could be found right now.
+
+        const response= await this._sendMessage('server', 'findServer');
+        this.serverUuid= response.senderUuid;
+      } catch( e ) {
+
+        if( !(e instanceof TimeoutError) ) {
+          console.error('Error while finding server (gate 1):', e);
+        }
+
+        // No server was found, this means this could be the server instance
+        // In case all tabs reload, all instances might end up here. Therefore,
+        // a random delay is added so one instance can come out on top. Only
+        // minimal timeout is given, so the chance of two waiting timeout
+        // windows overlapping is minimized which ultimately results in two
+        // instances both becoming server.
+
+        const sleepTime= 5+ Math.floor(500* Math.random());
+        println(`Passed the first server detection gate (sleeping for ${sleepTime}ms)`);
+        await asyncSleep(sleepTime);
+
+        try {
+          const response= await this._sendMessage('server', 'findServer', {}, 5);
+          this.serverUuid= response.senderUuid; // This is just a client
+
+        } catch( e ) {
+          if( !(e instanceof TimeoutError) ) {
+            console.error('Error while finding server (gate 2):', e);
+          }
+
+          // This now the server
+          this.serverUuid= this.uuid;
+        }
+      }
+      this._saveSession();
+    }
+
+    isServer() {
+      return this.uuid=== this.serverUuid;
+    }
+  }
+
+  class ServerChannel extends MessageChannel {
+    constructor(channel) {
+      super(channel);
+
+      /** @type {function(ChannelMessage<BotClientStatus>):void | null} */
+      this.onStatusMessage= null;
+    }
+
+    /** @param{ChannelMessage<any>} message */
+    onMessage(message) {
+      switch(message.type) {
+        case 'findServer':
+          this._respond(message, 'ok');
+          break;
+        case 'unknown':
+          break;
+        case 'status':
+          if( this.onStatusMessage ) {
+            this.onStatusMessage( message );
+          }
+          this._respond(message, 'ok');
+          break;
+        default:
+          this._respond(message, 'unknown');
+          break;
+      }
+    }
+
+    /**
+     * 
+     * @returns {Promise<Map<string, RemoteClient>>}
+     */
+    async findClients() {
+      const responses= await this._sendBroadcast('findClient');
+
+      // Create client objects and deduplicate them in one go
+      const clients= new Map();
+      responses.forEach( resp => {
+        if( resp.type === 'ok' ) {
+          clients.set(resp.senderUuid, new RemoteClient(
+            resp.senderUuid, resp.data.lvaId, new Date(resp.data.registrationTime)
+          ));
+        }
+      });
+
+      return clients;
+    }
+
+    /**
+     * 
+     * @param {Map<string,RemoteClient>} clientMap 
+     * @param {Map<string,Registration>} registrationMap 
+     * @param {number} maxRefreshTime 
+     */
+    async initClients(clientMap, registrationMap) {
+      assert(registrationMap.size <= clientMap.size);
+
+      const clients= clientMap.values();
+      const responsePromises= [];
+      registrationMap.forEach( registration => {
+        const client= clients.next();
+        if( !client.done ) {
+          const initData= Object.assign({}, registration);
+          responsePromises.push( 
+            // The client needs to navigate to the LVA's registration page which might
+            // take some time, so bump the timeout
+            this._sendMessage(client.value.clientUuid, 'init', initData, 5000)
+          );
+        }
+      });
+
+      const results= await Promise.allSettled(responsePromises);
+      results.forEach( result => {
+        if( result.status === 'rejected' ) {
+          console.error('Could not initialize client', result.reason);
+          return;
+        }
+
+        const client= clientMap.get(result.value.senderUuid);
+        if( client ) {
+          client.updateStatus( result.value );
+          return;
+        }
+      });
+    }
+
+    /**
+     * 
+     * @param {Map<string,RemoteClient>} clientMap 
+     */
+    async disableClients(clientMap) {
+      const responses= await this._sendBroadcast('disable');
+      
+      responses.forEach(response => {
+        const client= clientMap.get(response.senderUuid);
+        if( client ) {
+          client.updateStatus( response );
+        }
+      })
+    }
+  }
+
+
+  class ClientChannel extends MessageChannel {
+    constructor(channel) {
+      super(channel);
+      this.lvaId= null;
+      this.registrationTime= null;
+      this.userinterface= null;
+      this.heartbeatInterval= null;
+
+      const registration= session.registration();
+      if( registration ) {
+        this.lvaId= registration.lvaId;
+        this.registrationTime= registration.registrationTime;
+      }
+    }
+
+    /** @param {BotDisplay} ui */
+    setUserinterface(ui) {
+      this.userinterface= ui;
+
+      this._initializeFromSession();
+      
+      if( !this.heartbeatInterval ) {
+        //TODO: this.heartbeatInterval= window.setInterval(() => this._sendMessage('server', 'heartbeat'), 1000);
+      }
+
+      this._sendMessage('server', 'status', this._statusPacket());
+    }
+
+    _initializeFromSession() {
+      // In case there is a init message in the session storage -> clear out any active registration
+      try {
+        const message= session.initMessage();
+        if( message ) {
+          const {lvaId}= message.data;
+          const date= new Date(message.data.date);
+
+          if( !lvaId || !message.data.date || isNaN(date) ) {
+            this._respond(message, 'error');
+            return;
+          }
+
+          session.clearRegistration();
+          this.userinterface.reset();
+
+          this.lvaId= lvaId;
+          this.registrationTime= date;
+
+          const initOk= this.userinterface.initRegistration(lvaId, date);
+          this._respond(message, initOk ? 'ok' : 'error', this._statusPacket());
+        }
+      } catch( e ) {
+        //TODO: Error box
+        console.error('Could not init registration:', e);
+      } finally {
+        session.clearInitMessage();
+      }
+    }
+
+    _clear() {
+      this.lvaId= null;
+      this.registrationTime= null;
+
+      if( this.userinterface ) {
+        this.userinterface.reset();
+      }
+    }
+
+    /**
+     * @typedef {{status:string, clientUuid:string, lvaId:string, registrationTime:string}} BotClientStatus
+     * @returns {BotClientStatus}
+     */
+    _statusPacket() {
+      return {
+        status: this.userinterface ? this.userinterface.status.name : ClientStatus.Disconnected.name,
+        clientUuid: this.uuid,
+        lvaId: this.lvaId,
+        registrationTime: this.registrationTime ? this.registrationTime.toISOString() : null
+      };
+    }
+
+    /** @param{ChannelMessage<any>} message */
+    onMessage(message) {
+      switch(message.type) {
+        case 'findClient':
+          this._respond(message, 'ok', this._statusPacket());
+          break;
+        case 'init':
+          println(`Got init message. Page will be reloaded shortly (id ${message.data.pageId})...`);
+          session.saveInitMessage(message);
+          window.location= urlToPageId(message.data.pageId);
+          break;
+        case 'disable':
+          this._clear();
+          this._respond(message, 'ok', this._statusPacket());
+          break;
+        case 'unknown':
+          break;
+        default:
+          this._respond(message, 'unknown');
+          break;
+      }
+    }
+  }
+
   class Settings {
     constructor() {
       this.latencyAdjustment= 60;
@@ -646,7 +1237,10 @@
   }
 
   class UserInterface extends UIElement {
-    constructor() {
+    /**
+     * @param {ServerChannel} messageChannel 
+     */
+    constructor(messageChannel) {
       super();
 
       createAnimationKeyframes('wu-bot-moving-gradient', {
@@ -698,6 +1292,8 @@
       this.submitButton= null;
       this.date= null;
       this.registrationMap= null;
+      this.messageChannel= messageChannel;
+      this.clients= null;
 
       this._restoreStateFromSettings();
       this._setupLvaSelection();
@@ -707,6 +1303,7 @@
       this._setupAdvancedSettings();
       this._setupRegistrationTable();
       this._setupTimedWarnings();
+      this._setupMessageChannelEvents();
     }
 
     _restoreStateFromSettings() {
@@ -714,6 +1311,11 @@
       this.maxRefreshTimeField.value= settings.maxRefreshTime;
       this.buttonModeField.value= settings.buttonMode().name;
       this.registrationMap= settings.registrationsMap();
+
+      // The starting state cannot be restored
+      if( settings.state() === State.Starting ) {
+        settings.setState(State.Ready);
+      }
 
       const registration= this.registrationMap.get(currentPageId());
       if( !registration ) {
@@ -741,6 +1343,83 @@
       this._setDate( new Date( registration.date ), true );
 
       this._setState( settings.state(), true );
+    }
+    
+    _handlePendingState( restoreState= false ) {
+      if( !this.registrationMap.size ) {
+        this._showError('Missing course data or registration time data. Cannot register.');
+        this._setState( State.Error );
+        return;
+      }
+
+      const time= this._findClosestRegistrationTime();
+      this.clock.setTargetTime(time);
+
+      // Check if its too late
+      const millis= settings.adjustedMillisUntil( time );
+      if( millis < -1000* settings.maxRefreshTime ) {
+        // Cannot switch to Pending when too late
+        if( !restoreState ) {
+          this._showMessage( `Registration started more than ${settings.maxRefreshTime} seconds ago` );
+          this._setState( State.Ready );
+        }
+        return;
+      }
+
+      // Do not prepare clients when switching to Pending state
+      if( this.state === State.Starting || restoreState ) {
+        this._prepareClients();
+      }
+    }
+
+    async _prepareClients() {
+      // Find all clients and add them to the UI
+      this.clients= await this.messageChannel.findClients();
+      this._updateRegistrationsTable();
+
+      if( this.state === State.Pending ) {
+        return;
+      }
+
+      // Open additional clients if we are missing some
+      const numClients= this.registrationMap.size;
+      for( let i= this.clients.size; i < numClients; i++ ) {
+        try {
+          GM.openInTab(window.location, true);
+        } catch( e ) {
+          console.error('Could not open new tabs:', e);
+          this._showError('Could not open new tabs.');
+          this._setState( State.Error );
+          return;
+        }
+      }
+
+      // Wait for all the clients to appear over a span of 5s
+      for( let i= 0; i!== 5; i++ ) {
+        await asyncSleep(1000);
+        this.clients= await this.messageChannel.findClients();
+        this._updateRegistrationsTable();
+
+        if( this.clients.size >= numClients ) {
+          break;
+        }
+      }
+
+      // Schedule all clients
+      await this.messageChannel.initClients(this.clients, this.registrationMap);
+      this._updateRegistrationsTable();
+
+      settings.setState( State.Pending );
+      this._setState( State.Pending );
+    }
+
+    async _clearClients() {
+      if( !this.clients ) {
+        return;
+      }
+
+      this.messageChannel.disableClients( this.clients );
+      this._updateRegistrationsTable();
     }
     
     _setupLvaSelection() {
@@ -826,6 +1505,7 @@
     _setupStartStopButton() {
       this.startStopButton.addEventListener('click', () => {
         if( this.state === State.Pending ) {
+          this._clearClients();
           this._setState( State.Ready );
 
         } else if( this.state === State.Ready ) {
@@ -834,7 +1514,7 @@
             return;
           }
 
-          this._setState( State.Pending );
+          this._setState( State.Starting );
         }
 
         // Save the state change
@@ -877,11 +1557,26 @@
         }
       });
     }
+    _setupMessageChannelEvents() {
+      this.messageChannel.onStatusMessage= message => {
+        if( !this.clients ) {
+          return;
+        }
+
+        const client= this.clients.get(message.senderUuid);
+        if( client ) {
+          client.updateStatus( message );
+        }
+      };
+    }
 
     _setupRegistrationTable() {
       while(this.registrationsTable.rows.length > 1) {
         this.registrationsTable.deleteRow(1);
       }
+
+      const numClients= this.clients ? this.clients.size : 0;
+      this.registrationsTable.rows[0].cells[2].innerText= `Bot Tabs (${numClients})`;
 
       this.registrationMap.forEach( registration => {
         const row= this.registrationsTable.insertRow();
@@ -895,7 +1590,16 @@
         );
         // Cell with registration time
         row.insertCell().innerText= formatTime( new Date(registration.date) );
-        row.insertCell();
+        
+        // Insert client bots
+        const clientCell= row.insertCell();
+        if( this.clients ) {
+          this.clients.forEach( client => {
+            if( client.waitsFor(registration.lvaId) ) {
+              clientCell.appendChild(client.getRoot());
+            }
+          });
+        }
 
         // Cell with a button for removing a LVA
         const removeButton= button({}, {}, 'Remove');
@@ -922,7 +1626,7 @@
     }
 
     _removeLvaFromTable( lvaId ) {
-      if( this.state === State.Pending ) {
+      if( this.state === State.Starting || this.state === State.Pending ) {
         return;
       }
 
@@ -959,12 +1663,13 @@
 
       switch( this.state ) {
         case State.Pending:
+        case State.Starting:
           this._enableFields( false );
           this.clock.show();
           this._showMessage();
-          this.startStopButton.disabled= false;
+          this.startStopButton.disabled= this.state === State.Starting;
           this.startStopButton.innerText= 'Stop!';
-          //TODO this._handlePendingState( ...args );
+          this._handlePendingState( ...args );
           break;
 
         case State.Selecting:
@@ -1005,16 +1710,19 @@
       this.timeField.value= dateToLocalIsoString( this.date );
 
       // Show the closest time on the clock as the target time
+      this.clock.setTargetTime( this._findClosestRegistrationTime() );
+      this.clock.show();
+    }
+
+    _findClosestRegistrationTime() {
       let targetDate= this.date;
       this.registrationMap.forEach( registration => {
         const registrationDate= new Date(registration.date);
-        if( registrationDate.getTime() < targetDate.getTime() ) {
+        if( !targetDate || registrationDate.getTime() < targetDate.getTime() ) {
           targetDate= registrationDate;
         }
       });
-
-      this.clock.setTargetTime( targetDate );
-      this.clock.show();
+      return targetDate;
     }
 
     _checkSubmitButton( useAfterText= false ) {
@@ -1022,9 +1730,7 @@
         return false;
       }
 
-      const buttonText= this.submitButton.value || this.submitButton.innerText;
-      const expectedText= useAfterText ? settings.buttonMode().after : settings.buttonMode().before;
-      return buttonText.trim().toLowerCase() === expectedText;
+      return checkSubmitButton(settings, this.submitButton, useAfterText);
     }
 
     _setLvaRow( row, restoreState= false ) {
@@ -1103,17 +1809,183 @@
     }
   }
 
+  class RemoteClient extends UIElement {
+    constructor(uuid, lvaId= null, registrationTime= null) {
+      super();
+      this.root= div({}, {height: '1rem', width: '1rem'},
+        this.statusField= span({}, {})
+      );
+
+      this.clientUuid= uuid;
+      if( lvaId && registrationTime && !isNaN(registrationTime) ) {
+        this.lvaId= lvaId;  
+        this.registrationTime= registrationTime;
+        this.setStatus(ClientStatus.Pending);
+      } else {
+        this.lvaId= null;
+        this.registrationTime= null;
+        this.setStatus(ClientStatus.Disconnected);
+      }
+    }
+
+    isArmed() {
+      return this.registrationTime && this.lvaId;
+    }
+
+    waitsFor( lvaId ) {
+      return this.isArmed() && this.lvaId === lvaId;
+    }
+
+    /** @param {ClientStatus} status */
+    setStatus(status) {
+      this.statusField.innerText= status.text.substring(0,status.text.indexOf(' '));
+    }
+
+    /** @param{ChannelMessage<BotClientStatus?>?} message */
+    updateStatus( message ) {
+      if( !message || !message.data ) {
+        this.setStatus( ClientStatus.Error );
+        return;
+      }
+
+      const {status: statusName, lvaId, registrationTime: registrationTimeString}= message.data;
+      const registrationTime= new Date(registrationTimeString);
+      if( !lvaId || !registrationTimeString || isNaN(registrationTime)) {
+        this.setStatus( ClientStatus.Disconnected );
+        return;
+      }
+
+      this.lvaId= lvaId;
+      this.registrationTime= registrationTime;
+
+      if( message.type !== 'ok' && message.type !== 'status' ) {
+        this.setStatus( ClientStatus.Error );
+        return;
+      }
+
+      this.setStatus( ClientStatus[statusName] );
+    }
+  }
+
   class BotDisplay extends UIElement {
     constructor() {
       super();
 
       this.root= div({}, Style.mainContainer,
+        div({}, Style.topBar,
+          this.statusField= div({}, {padding: '5px', borderRadius: '5px'})
+        ),
         div({}, {}, 
           'This browser tab is a remote controlled bot instance. '+
           'Use the main browser tab with the bot user interface to do your configuration.'
         ),
         this.clock= new Clock()
-      )
+      );
+
+      this.status= null;
+      this.lvaRow= null;
+      this.submitButton= null;
+
+      this.setStatus( ClientStatus.Disconnected );
+
+      const registration= session.registration();
+      if( registration ) {
+        this._handlePendingState( registration.lvaId, registration.registrationTime );
+      }
+    }
+
+    _handlePendingState(lvaId, registrationTime) {
+      this.lvaRow= findLvaRowById( lvaId );
+      if( !this.lvaRow ) {
+        //this._showError(`Could not find a course with the id '${registration.lvaId}'`);
+        console.error('find row');
+        return false;
+      }
+
+      this.submitButton= extractSubmitButtonFromRow( this.lvaRow );
+      if( !this.submitButton ) {
+        //this._showError('Could not find registration button. This might be a bug');
+        console.error('extract submit button')
+        return false;
+      }
+
+      this.submitButton.style.backgroundColor= Color.ActiveSubmitButton;
+      this.lvaRow.style.backgroundColor= Color.ActiveRow;
+
+      this.clock.setTargetTime(registrationTime);
+
+      // Check if the button in the 'after' state (now registered) exists -> registration was successful
+      if( this._checkSubmitButton( true ) ) {
+        //this._showMessage( 'Registration successful. :^)' );
+        console.log('Done');
+        this.setStatus( ClientStatus.Done );
+        return true;
+      }
+
+      // Check if the button in the 'before' state (not registered yet) exists -> error out if not
+      if( !this._checkSubmitButton( false ) ) {
+        //this._showError('Wrong registration mode for this submit button.');
+        console.error('check button')
+        this.setStatus( ClientStatus.Error );
+        return false;
+      }
+
+      // Time is already past target time -> try to do the registration
+      const millis= settings.adjustedMillisUntil( registrationTime );
+      if( millis < 0 ) {
+        // It is too late -> do not try to refresh again and bail out to ready state
+        if( millis < -1000* settings.maxRefreshTime ) {
+          //this._showError( `Could not register over a span of ${settings.maxRefreshTime} seconds. Aborting.` );
+          console.error('too late');
+          this.setStatus( ClientStatus.Error );
+          return false;
+        }
+
+        // Do the registration
+        if( !this.submitButton.disabled ) {
+          this.submitButton.style.backgroundColor= Color.Pending;
+          this.submitButton.click();
+          this.setStatus( ClientStatus.Pending );
+          return true;
+        }
+      }
+
+      this.setStatus( ClientStatus.Pending );
+      return true;
+    }
+
+    _checkSubmitButton( useAfterText= false ) {
+      if( !this.submitButton ) {
+        return false;
+      }
+
+      return checkSubmitButton(settings, this.submitButton, useAfterText);
+    }
+
+    initRegistration(lvaId, registrationTime) {
+      session.saveRegistration({
+        lvaId,
+        registrationTime
+      });
+
+      return this._handlePendingState(lvaId, registrationTime);
+    }
+
+    reset() {
+      println('Resetting');
+      if( this.lvaRow && this.submitButton ) {
+        this.submitButton.style.backgroundColor= null;
+        this.lvaRow.style.backgroundColor= null;
+      }
+
+      this.setStatus( ClientStatus.Disconnected );
+    }
+
+    /** @param {ClientStatus} status */
+    setStatus( status ) {
+      this.status= status;
+      this.statusField.innerText= status.text;
+      this.statusField.style.backgroundColor= status.color;
     }
   }
 
@@ -1127,8 +1999,19 @@
 
   println('on');
 
+  // Create message channel to detect whether this instance is a client or the server
+  const session= new Session();
+  const messageChannel= await MessageChannel.create();
+  println('I am', messageChannel.isServer() ? 'the server' : 'a client');
+  
   const settings= await Settings.create();
-  const ui= new UserInterface();
-  ui.insertBefore( mainTable() );
+  if( messageChannel.isServer() ) {
     //const reloadTimer= new ReloadTimer();
+    const ui= new UserInterface( messageChannel );
+    ui.insertBefore( mainTable() );
+  } else {
+    const ui= new BotDisplay();
+    ui.insertBefore( mainTable() );
+    messageChannel.setUserinterface( ui );
+  }
 })();
