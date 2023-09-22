@@ -1434,7 +1434,7 @@
       const numClients= this.registrationMap.size;
       for( let i= this.clients.size; i < numClients; i++ ) {
         try {
-          GM.openInTab(window.location, true);
+          GM.openInTab(window.location.toString(), {loadInBackground: true});
         } catch( e ) {
           console.error('Could not open new tabs:', e);
           this._showError('Could not open new tabs.');
