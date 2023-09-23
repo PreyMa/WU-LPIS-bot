@@ -1012,6 +1012,10 @@
         this.heartbeatInterval= window.setInterval(() => this._sendMessage('server', 'heartbeat'), 2000);
       }
 
+      this.sendStatus();
+    }
+
+    sendStatus() {
       this._sendMessage('server', 'status', this._statusPacket());
     }
 
@@ -2146,13 +2150,21 @@
           'This browser tab is a remote controlled bot instance. '+
           'Use the main browser tab with the bot user interface (indicated by 🏠) to do your configuration.'
         ),
-        this.clock= new Clock()
+        this.clock= new Clock(),
+        this.messageField= new MessageField()
       );
 
       this.status= null;
       this.lvaRow= null;
       this.submitButton= null;
       this.reloadTimer= new ReloadTimer();
+
+      this.messageField.addEventListener('dismiss', () => {
+        if( this.status === ClientStatus.Error ) {
+          this.setStatus( ClientStatus.Disconnected );
+          messageChannel.sendStatus();
+        }
+      });
 
       this.setStatus( ClientStatus.Disconnected );
 
@@ -2167,15 +2179,13 @@
     _handlePendingState(lvaId, registrationTime) {
       this.lvaRow= findLvaRowById( lvaId );
       if( !this.lvaRow ) {
-        //this._showError(`Could not find a course with the id '${registration.lvaId}'`);
-        console.error('find row');
+        this.messageField.showError(`Could not find a course with the id '${lvaId}'`);
         return false;
       }
 
       this.submitButton= extractSubmitButtonFromRow( this.lvaRow );
       if( !this.submitButton ) {
-        //this._showError('Could not find registration button. This might be a bug');
-        console.error('extract submit button')
+        this.messageField.showError('Could not find registration button. This might be a bug');
         return false;
       }
 
@@ -2186,7 +2196,7 @@
 
       // Check if the button in the 'after' state (now registered) exists -> registration was successful
       if( this._checkSubmitButton( true ) ) {
-        //this._showMessage( 'Registration successful. :^)' );
+        this.messageField.showMessage( 'Registration successful. :^)' );
         println('Registration done');
         this.setStatus( ClientStatus.Done );
         return true;
@@ -2194,7 +2204,7 @@
 
       // Check if the button in the 'before' state (not registered yet) exists -> error out if not
       if( !this._checkSubmitButton( false ) ) {
-        //this._showError('Wrong registration mode for this submit button.');
+        this.messageField.showError('Wrong registration mode for this submit button.');
         console.error('check button')
         this.setStatus( ClientStatus.Error );
         return false;
@@ -2205,8 +2215,7 @@
       if( millis < 0 ) {
         // It is too late -> do not try to refresh again and bail out to ready state
         if( millis < -1000* settings.maxRefreshTime ) {
-          //this._showError( `Could not register over a span of ${settings.maxRefreshTime} seconds. Aborting.` );
-          console.error('too late');
+          this.messageField.showError( `Could not register over a span of ${settings.maxRefreshTime} seconds. Aborting.` );
           this.setStatus( ClientStatus.Error );
           return false;
         }
