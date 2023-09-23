@@ -1471,8 +1471,8 @@
       this.buttonModeField.value= settings.buttonMode().name;
       this.registrationMap= settings.registrationsMap();
 
-      // The starting state cannot be restored
-      if( settings.state() === State.Starting ) {
+      // The starting state and error state cannot be restored
+      if( settings.state() === State.Starting || settings.state() === State.Error ) {
         settings.setState(State.Ready);
       }
 
