@@ -1970,7 +1970,9 @@
 
     /** @param {ClientStatus} status */
     setStatus(status) {
-      this.statusField.innerText= status.text.substring(0,status.text.indexOf(' '));
+      const splitIdx= status.text.indexOf(' ');
+      this.statusField.innerText= status.text.substring(0,splitIdx);
+      this.statusField.title= status.text.substring(splitIdx);
     }
 
     /** @param{ChannelMessage<BotClientStatus?>?} message */
