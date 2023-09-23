@@ -1342,6 +1342,56 @@
     }
   }
 
+  class MessageField extends UIElement {
+    constructor() {
+      super();
+      
+      this.root= div({}, Style.messageField,
+        span(),
+        this.clearErrorButton= button({title: 'Close error message'}, {display: 'none', float: 'right'}, 'Dismiss')
+      );
+
+      this.clearErrorButton.addEventListener('click', e => {
+        this.clearErrorButton.style.display= 'none';
+        this.hide();
+        this.dispatchEvent( new CustomEvent('dismiss') );
+      });
+    }
+
+    hide() {
+      this.root.style.display= 'none';
+    }
+
+    showError( msg= null ) {
+      this.showMessage('Error: '+ msg);
+      this.root.style.borderColor= Color.ErrorBoxBorder;
+      this.root.style.background= Color.ErrorBox;
+      this.clearErrorButton.style.display= 'block';
+    }
+
+    showWarning( msg= null ) {
+      this.showMessage('Warning: '+ msg);
+      this.root.style.background= 'linear-gradient(90deg, transparent 30%, #d9e7007d 80%, transparent 100%)';
+      this.root.style.backgroundSize= '50% 100%';
+    }
+
+    showMessage( msg= null ) {
+      if( !msg ) {
+        this.hide();
+        return;
+      }
+
+      this.root.firstElementChild.innerText= msg;
+      this.root.style.display= 'block';
+      this.root.style.background= null;
+      this.root.style.borderColor= null;
+    }
+
+    currentlyShowsMessage() {
+      return this.root.style.display !== 'none';
+    }
+  }
+
   class UserInterface extends UIElement {
     /**
      * @param {ServerChannel} messageChannel 
@@ -1380,10 +1430,7 @@
           )
         ),
         this.clock= new Clock(),
-        this.messageField= div({}, Style.messageField,
-          span(),
-          this.clearErrorButton= button({title: 'Close error message'}, {display: 'none', float: 'right'}, 'Dismiss')
-        )
+        this.messageField= new MessageField()
       );
 
       for( const name in ButtonMode ) {
@@ -1434,14 +1481,14 @@
       }
 
       if( !registration.lvaId || !registration.date ) {
-        this._showError(`Stored registration entry is missing values`);
+        this.messageField.showError(`Stored registration entry is missing values`);
         this._setState( State.Ready );
         return;
       }
 
       const row= findLvaRowById( registration.lvaId );
       if( !row ) {
-        this._showError(`Could not find a course with the id '${registration.lvaId}'`);
+        this.messageField.showError(`Could not find a course with the id '${registration.lvaId}'`);
         this._setState( State.Ready );
         return;
       }
@@ -1455,7 +1502,7 @@
     
     _handlePendingState( restoreState= false ) {
       if( !this.registrationMap.size ) {
-        this._showError('Missing course data or registration time data. Cannot register.');
+        this.messageField.showError('Missing course data or registration time data. Cannot register.');
         this._setState( State.Error );
         return;
       }
@@ -1468,7 +1515,7 @@
       if( millis < -1000* settings.maxRefreshTime ) {
         // Cannot switch to Pending when too late
         if( !restoreState ) {
-          this._showMessage( `Registration started more than ${settings.maxRefreshTime} seconds ago` );
+          this.messageField.showMessage( `Registration started more than ${settings.maxRefreshTime} seconds ago` );
           this._setState( State.Ready );
         }
         return;
@@ -1496,7 +1543,7 @@
           GM.openInTab(window.location.toString(), {loadInBackground: true});
         } catch( e ) {
           console.error('Could not open new tabs:', e);
-          this._showError('Could not open new tabs.');
+          this.messageField.showError('Could not open new tabs.');
           this._setState( State.Error );
           return;
         }
@@ -1540,7 +1587,7 @@
           }
 
           // Clear error message
-          this._showMessage();
+          this.messageField.hide();
 
           const id= this.lvaField.value.trim();
           if( !id ) {
@@ -1551,7 +1598,7 @@
           this._setLvaRow( findLvaRowById( id ) );
 
           if( !this.lvaRow ) {
-            this._showError(`Could not find a course with the id '${id}'`);
+            this.messageField.showError(`Could not find a course with the id '${id}'`);
           }
         }
       });
@@ -1565,12 +1612,12 @@
 
         if( this.state === State.Selecting ) {
           this._setState( State.Ready )
-          this._showMessage();
+          this.messageField.showMessage();
           return;
         }
 
         this._setState( State.Selecting );
-        this._showMessage('Click on the course you want to register for');
+        this.messageField.showMessage('Click on the course you want to register for');
       });
 
       // Setup event handlers for all table rows
@@ -1591,7 +1638,7 @@
         row.addEventListener('click', () => {
           if( this.state === State.Selecting ) {
             row.style.backgroundColor= null;
-            this._showMessage();
+            this.messageField.hide();
             this._setState( State.Ready );
             this._setLvaRow( row );
           }
@@ -1618,7 +1665,7 @@
 
         } else if( this.state === State.Ready ) {
           if( !this.registrationMap.size ) {
-            this._showError('No registrations scheduled!')
+            this.messageField.showError('No registrations scheduled!')
             return;
           }
 
@@ -1631,11 +1678,11 @@
     }
 
     _setupClearErrorButton() {
-      this.clearErrorButton.addEventListener('click', () => {
-        settings.setState( State.Ready );
-        this._setState( State.Ready );
-        this.clearErrorButton.style.display= 'none';
-        this._showMessage();
+      this.messageField.addEventListener('dismiss', () => {
+        if( state === State.Error ) {
+          this._setState( State.Ready );
+          settings.setState( State.Ready );
+        }
       });
     }
 
@@ -1657,17 +1704,17 @@
         // Only 60 secs left and a course is selected
         if( e.detail.isBefore && e.detail.secs < 60 ) {
           // Bot is not yet pending
-          if( this.registrationMap.size && this.state !== State.Pending && !this._currentlyShowsMessage() ) {
-            this._showWarning(
+          if( this.registrationMap.size && this.state !== State.Pending && !this.messageField.currentlyShowsMessage() ) {
+            this.messageField.showWarning(
               'You have scheduled a registration where registration starts in less than 60 seconds.' +
               "Press 'Go!' to enable automatic registration!"
             );
           }
 
           // Not every registration has a client tab
-          if( this.registrationMap.size && this.state === State.Pending && !this._currentlyShowsMessage()) {
+          if( this.registrationMap.size && this.state === State.Pending && !this.messageField.currentlyShowsMessage()) {
             if(!this._everyLvaHasPendingClient()) {
-              this._showWarning(
+              this.messageField.showWarning(
                 'Registration starts in less than 60s but not every scheduled registration has an associated bot tab.' +
                 "Restart the system by clicking 'Stop!' and then 'Go!' again!"
               );
@@ -1820,7 +1867,7 @@
         case State.Starting:
           this._enableFields( false );
           this.clock.show();
-          this._showMessage();
+          this.messageField.showMessage();
           this.startStopButton.disabled= this.state === State.Starting;
           this.startStopButton.innerText= 'Stop!';
           this._handlePendingState( ...args );
@@ -1836,7 +1883,6 @@
           this._enableFields( true );
           this.startStopButton.innerText= 'Go!';
           this.selectLvaButton.innerText= 'Select course';
-          this.clearErrorButton.style.display= 'block';
           break;
 
         case State.Ready:
@@ -1950,13 +1996,15 @@
         }
       }
 
+      settings.setState( State.Ready );
+
       if( !allLvasSucceeded ) {
-        this._showError( 'Not all registrations were successful.' );
+        this.messageField.showError( 'Not all registrations were successful.' );
         this._setState( State.Error );
         return;
       }
 
-      this._showMessage( 'Registration successful. :^)' );
+      this.messageField.showMessage( 'Registration successful. :^)' );
       this._setState( State.Ready );
     }
 
@@ -1974,7 +2022,7 @@
 
         this.submitButton= extractSubmitButtonFromRow( this.lvaRow );
         if( !this.submitButton ) {
-          this._showError('Could not find registration button. This might be a bug');
+          this.messageField.showError('Could not find registration button. This might be a bug');
           this.lvaRow= null;
           return;
         }
@@ -1982,7 +2030,7 @@
         if( !restoreState ) {
           // Be strict about the button type, only when user selects the lva
           if( !this._checkSubmitButton() ) {
-            this._showError(
+            this.messageField.showError(
               `Wrong registration mode for this button. ` +
               `Contains '${this.submitButton.value || this.submitButton.innerText}' but expected '${settings.buttonMode().before}'.`
             );
@@ -1993,7 +2041,7 @@
           const date= extractDateFromRow( this.lvaRow );
           this._setDate( date );
           if( !date ) {
-            this._showError( `Could not read date and time for course as it did not conform to 'ab/bis dd.MM.yyyy hh:mm'.` );
+            this.messageField.showError( `Could not read date and time for course as it did not conform to 'ab/bis dd.MM.yyyy hh:mm'.` );
           }
         }
 
@@ -2005,34 +2053,6 @@
         // Update settings after the date was auto-detected
         this._updateRegistrationsTable();
       }
-    }
-
-    _showError( msg= null ) {
-      this._showMessage('Error: '+ msg);
-      this.messageField.style.borderColor= Color.ErrorBoxBorder;
-      this.messageField.style.background= Color.ErrorBox;
-    }
-
-    _showWarning( msg= null ) {
-      this._showMessage('Warning: '+ msg);
-      this.messageField.style.background= 'linear-gradient(90deg, transparent 30%, #d9e7007d 80%, transparent 100%)';
-      this.messageField.style.backgroundSize= '50% 100%';
-    }
-
-    _showMessage( msg= null ) {
-      if( !msg ) {
-        this.messageField.style.display= 'none';
-        return;
-      }
-
-      this.messageField.firstElementChild.innerText= msg;
-      this.messageField.style.display= 'block';
-      this.messageField.style.background= null;
-      this.messageField.style.borderColor= null;
-    }
-
-    _currentlyShowsMessage() {
-      return this.messageField.style.display !== 'none';
     }
   }
 
