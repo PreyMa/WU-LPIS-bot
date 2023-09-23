@@ -287,6 +287,8 @@
    * @returns {URL}
    */
   function urlToPageId( pageId ) {
+    // LPIS requires the SPP values to be in the same place every time,
+    // else the server returns an error page. For more info see 'currentPageId()'
     const url= new URL(window.location);
     url.search= url.search.replace(/SPP=\w+(;?)/, `SPP=${pageId}$1`);
     return url;
@@ -302,6 +304,9 @@
       return cachedPageId;
     }
 
+    // LPIS stores its query parameters separated by semicolons instead of
+    // ampersand which therefore prevents the use 'url.searchParams'. Instead
+    // it is back to custom regex
     const match= window.location.search.match(/SPP=(?<spp>\w+);?/);
     if( !match || !match.groups.spp ) {
       return null;
@@ -702,7 +707,8 @@
     }
 
     /**
-     * 
+     * Handles an incoming broadcast channel message and checks whether this
+     * instance is addressed by the message.
      * @typedef {{messageUuid:string, senderUuid:string, receiverUuid:string, responseUuid:string?, type:string, data:T}} ChannelMessage
      * @template T
      * @param {MessageEvent<ChannelMessage<any>>} m 
@@ -736,7 +742,8 @@
     }
 
     /**
-     * 
+     * Send a message to specific receiver and a timeout for it to respond. The
+     * response is returned asynchronously or an exception is thrown
      * @param {string} receiverUuid
      * @param {string} type 
      * @param {any} data 
@@ -762,7 +769,8 @@
     }
 
     /**
-     * 
+     * Send a broadcast message to all clients. All responses are collected over 
+     * the span of the timeout and returned asynchronously as an array.
      * @param {string} type 
      * @param {any} data 
      * @param {number} timeout 
@@ -787,7 +795,9 @@
     }
 
     /**
-     * 
+     * Send a message responding to a received one. This is obligatory
+     * for any message received, else the other client experiences a
+     * timeout error.
      * @param {ChannelMessage<any>} message 
      * @param {string} type 
      * @param {any} data 
@@ -806,6 +816,12 @@
       tracePacket(TraceMode.ResponseOut, packet);
     }
 
+    /**
+     * This method needs to be called once right after creating the message
+     * channel instance to detect which client is currently the server on
+     * the shared broadcast channel. In case no server can be found, the
+     * client assumes the roll itself.
+     */
     async _detectServer() {
       try {
         // This is the fast path so it can be determined immediately whether
@@ -892,7 +908,8 @@
     }
 
     /**
-     * 
+     * Sends a broadcast message to find all active clients, which
+     * are returned as a map with their client id as the key.
      * @returns {Promise<Map<string, RemoteClient>>}
      */
     async findClients() {
@@ -912,7 +929,8 @@
     }
 
     /**
-     * 
+     * Send configuration data to each client to initialize their pending
+     * state. Each client is sent data needed to register for a LVA.
      * @param {Map<string,RemoteClient>} clientMap 
      * @param {Map<string,Registration>} registrationMap 
      * @param {number} maxRefreshTime 
@@ -950,7 +968,8 @@
     }
 
     /**
-     * 
+     * Send a broadcast message to disable all clients and set them to their
+     * 'disconnected' status.
      * @param {Map<string,RemoteClient>} clientMap 
      */
     async disableClients(clientMap) {
@@ -987,6 +1006,7 @@
 
       this._initializeFromSession();
       
+      // Send a heartbeat signal every two seconds
       if( !this.heartbeatInterval ) {
         this.heartbeatInterval= window.setInterval(() => this._sendMessage('server', 'heartbeat'), 2000);
       }
@@ -995,7 +1015,7 @@
     }
 
     _initializeFromSession() {
-      // In case there is a init message in the session storage -> clear out any active registration
+      // Setup the registration process in case there is a init message in the session storage
       try {
         const message= session.initMessage();
         if( message ) {
@@ -1007,12 +1027,14 @@
             return;
           }
 
+          // Clear out any active registration
           session.clearRegistration();
           this.userinterface.reset();
 
           this.lvaId= lvaId;
           this.registrationTime= date;
 
+          // Respond with current status
           const initOk= this.userinterface.initRegistration(lvaId, date);
           this._respond(message, initOk ? 'ok' : 'error', this._statusPacket());
         }
@@ -1034,6 +1056,8 @@
     }
 
     /**
+     * Create a packet of the current status to be sent as a channel 
+     * message's payload
      * @typedef {{status:string, clientUuid:string, lvaId:string, registrationTime:string}} BotClientStatus
      * @returns {BotClientStatus}
      */
@@ -1053,6 +1077,12 @@
           this._respond(message, 'ok', this._statusPacket());
           break;
         case 'init':
+          // Instead of responding to the message, we store the message and first
+          // load the correct page. When the page is loaded and the instance restarts
+          // it again becomes a client, checks the session storage for the init
+          // message and tries to setup the registration based on the provided
+          // configuration. Only then we respond to the message and clear out the
+          // session storage.
           println(`Got init message. Page will be reloaded shortly (id ${message.data.pageId})...`);
           session.saveInitMessage(message);
           window.location= urlToPageId(message.data.pageId);
@@ -1692,7 +1722,7 @@
         // Cell with registration time
         row.insertCell().innerText= formatTime( new Date(registration.date) );
         
-        // Insert client bots
+        // Cell with client bots
         const clientCell= row.insertCell();
         if( this.clients ) {
           this.clients.forEach( client => {
@@ -1945,6 +1975,7 @@
 
     /** @param{ChannelMessage<BotClientStatus?>?} message */
     updateStatus( message ) {
+      // No message (data) -> Error
       if( !message || !message.data ) {
         this.setStatus( ClientStatus.Error );
         return;
@@ -1952,6 +1983,7 @@
 
       this.heartbeat();
 
+      // No registration data -> Disconnected
       const {status: statusName, lvaId, registrationTime: registrationTimeString}= message.data;
       const registrationTime= new Date(registrationTimeString);
       if( !lvaId || !registrationTimeString || isNaN(registrationTime)) {
@@ -1962,11 +1994,13 @@
       this.lvaId= lvaId;
       this.registrationTime= registrationTime;
 
+      // Message with bad/unexpected response type -> Error
       if( message.type !== 'ok' && message.type !== 'status' ) {
         this.setStatus( ClientStatus.Error );
         return;
       }
 
+      // Show the status the client declares
       this.setStatus( ClientStatus[statusName] );
     }
 
@@ -2001,6 +2035,8 @@
 
       this.setStatus( ClientStatus.Disconnected );
 
+      // Try to load a registration configuration from the session storage
+      // to restore the previous state before reloading
       const registration= session.registration();
       if( registration ) {
         this._handlePendingState( registration.lvaId, registration.registrationTime );
@@ -2063,6 +2099,7 @@
         }
       }
 
+      // Prime the timer to refresh the page in the future
       // This might refresh the page immediately, but that is fine as
       // we already bailed if we are passed max refresh time
       this.reloadTimer.set( registrationTime );
@@ -2104,6 +2141,7 @@
       this.statusField.innerText= status.text;
       this.statusField.style.backgroundColor= status.color;
 
+      // Show a red X if there is an error
       const titleSymbol= this.status === ClientStatus.Error ? '❌' : '🛠️';
       document.title= titleSymbol+ ' '+ document.title.substring(document.title.indexOf('L'));
     }
@@ -2124,10 +2162,13 @@
   const messageChannel= await MessageChannel.create();
   println('I am', messageChannel.isServer() ? 'the server' : 'a client');
   
+  // Server mode
   const settings= await Settings.create();
   if( messageChannel.isServer() ) {
     const ui= new UserInterface( messageChannel );
     ui.insertBefore( mainTable() );
+
+  // Client mode
   } else {
     const ui= new BotDisplay();
     ui.insertBefore( mainTable() );
