@@ -46,6 +46,10 @@ simply click `Stop` and then `Go!` again to restart the system.
 > The bot only reloads the page and clicks the `anmelden` button. You have to
 > configure and start the bot yourself, plus keep the tab open!
 > Do not close your laptop or let your computer go to sleep!
+>
+> Some browsers will suspend tabs in the background after a few minutes (Chrome ~5
+> minutes). Therefore, you should start (`Go!`) the bot only shortly before
+> the registration begins, for example 2 minutes.
 
 ## 🤔 How does it work
 The script reads the source code of the LPIS page and allows you to select a course
