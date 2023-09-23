@@ -1958,7 +1958,7 @@
     _showError( msg= null ) {
       this._showMessage('Error: '+ msg);
       this.messageField.style.borderColor= Color.ErrorBoxBorder;
-      this.messageField.style.backgroundColor= Color.ErrorBox;
+      this.messageField.style.background= Color.ErrorBox;
     }
 
     _showWarning( msg= null ) {
@@ -1975,7 +1975,7 @@
 
       this.messageField.firstElementChild.innerText= msg;
       this.messageField.style.display= 'block';
-      this.messageField.style.backgroundColor= null;
+      this.messageField.style.background= null;
       this.messageField.style.borderColor= null;
     }
 
