@@ -62,6 +62,7 @@
       frame: {
         whiteSpace: 'pre',
         border: '7px grey double',
+        borderRadius: '0.4em',
         padding: '1rem',
         width: 'max-content'
       }
