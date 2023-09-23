@@ -1209,20 +1209,23 @@
         this.timer= null;
       }
 
-      if( date ) {
-        const millis= settings.adjustedMillisUntil( date );
-        if( millis < 0 ) {
-          // Stop refreshing after a specified number of seconds
-          if( millis < -1000 * settings.maxRefreshTime ) {
-            return;
-          }
-
-          return this._doRefresh();
+      if( !date ) {
+        println('Page refreshing disabled');
+        return;
+      }
+      
+      const millis= settings.adjustedMillisUntil( date );
+      if( millis < 0 ) {
+        // Stop refreshing after a specified number of seconds
+        if( millis < -1000 * settings.maxRefreshTime ) {
+          return;
         }
 
-        println('Refresh page in', millis, 'ms');
-        this.timer= window.setTimeout(() => this._doRefresh(), millis);
+        return this._doRefresh();
       }
+
+      println('Refresh page in', millis, 'ms');
+      this.timer= window.setTimeout(() => this._doRefresh(), millis);
     }
 
     _doRefresh() {
@@ -2178,6 +2181,8 @@
         this.lvaRow.style.backgroundColor= null;
       }
 
+      session.clearRegistration();
+      this.reloadTimer.set( null );
       this.setStatus( ClientStatus.Disconnected );
     }
 
