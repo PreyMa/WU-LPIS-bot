@@ -1737,6 +1737,10 @@
         const removeButton= button({title: 'Remove from schedule'}, {}, 'Remove');
         row.insertCell().appendChild( removeButton );
         removeButton.addEventListener('click', () => this._removeLvaFromTable(registration.lvaId));
+        removeButton.disabled= 
+          this.state === State.Starting ||
+          this.state === State.Pending ||
+          this.state === State.Selecting;
 
         if( registration.pageId === currentPageId() ) {
           row.style.backgroundColor= Color.ActiveRow;
@@ -1784,6 +1788,13 @@
       this.timeField.disabled= !enable;
       this.selectLvaButton.disabled= !enable;
       this.startStopButton.disabled= !enable;
+
+      // Loop over the 'remove' buttons in the schedule table
+      // The disabled state is also set on creation by '_setupRegistrationTable()'
+      for(let i= 1; i< this.registrationsTable.rows.length; i++) {
+        const row= this.registrationsTable.rows[i];
+        row.cells[row.cells.length-1].firstElementChild.disabled= !enable;
+      }
     }
 
     _setState( state, ...args ) {
