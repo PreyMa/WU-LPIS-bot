@@ -106,6 +106,30 @@
   }
 
   /**
+   * @typedef {{name:string, prefix:string}} TraceMode
+   * @type {{Inbound:TraceMode, Outbound:TraceMode, ResponseIn:TraceMode, ResponseOut:TraceMode}}
+   */
+  const TraceMode= {
+    Inbound: {name: 'Inbound', prefix: '→ Trace'},
+    Outbound: {name: 'Outbound', prefix: '← Trace'},
+    ResponseIn: {name: 'ResponseIn', prefix: '→ Trace (Response)'},
+    ResponseOut: {name: 'ResponseOut', prefix: '← Trace (Response)'}
+  }
+
+  const doTracing= false;
+  /**
+   * Optionally print a trace message for a channel message packet
+   * @param {TraceMode} mode 
+   * @param {ChannelMessage} packet 
+   * @param {string} info 
+   */
+  function tracePacket(mode, packet, info= '') {
+    if( doTracing ) {
+      console.log(mode.prefix, info, packet, new Error());
+    }
+  }
+
+  /**
    * @returns {never}
    */
   function abstractMethod() {
@@ -686,8 +710,9 @@
      */
     _handleMessage( m ) {
       if( m.data.receiverUuid === this.uuid || m.data.receiverUuid === 'all' || (m.data.receiverUuid === 'server' && this.isServer())) {
-        console.log('-> Trace:', m.data);
         if( m.data.responseUuid ) {
+          tracePacket(TraceMode.ResponseIn, m.data);
+
           const messageHandle= this.pendingMessages.get(m.data.responseUuid);
           if(!messageHandle) {
             throw new Error('Response to unknown message uuid:', m);
@@ -696,13 +721,14 @@
           return;
         }
         
+        tracePacket(TraceMode.Inbound, m.data);
         this.onMessage(m.data);
       }
     }
 
     /** @param{ChannelMessage<any>} m */
     onMessage( m ) {
-      console.log('Unhandled incoming message by plain message channel:', m);
+      println('Unhandled incoming message by plain message channel:', m);
     }
 
     _handleMessageError( e ) {
@@ -727,9 +753,9 @@
           type,
           data
         };
-        this.channel.postMessage(packet);
 
-        console.log('<- Trace:', packet, new Error());
+        this.channel.postMessage(packet);
+        tracePacket(TraceMode.Outbound, packet, 'Message');
 
         PendingSimpleMessage.createAndInsert(this.pendingMessages, messageUuid, resolve, reject, timeout);
       });
@@ -752,9 +778,9 @@
           type,
           data
         };
-        this.channel.postMessage(packet);
 
-        console.log('<- Trace:', packet, new Error());
+        this.channel.postMessage(packet);
+        tracePacket(TraceMode.Outbound, packet, 'Broadcast');
 
         PendingBroadcastMessage.createAndInsert(this.pendingMessages, messageUuid, resolve, reject, timeout);
       });
@@ -775,9 +801,9 @@
         type,
         data
       };
-      this.channel.postMessage(packet);
 
-      console.log('<- Trace:', packet);
+      this.channel.postMessage(packet);
+      tracePacket(TraceMode.ResponseOut, packet);
     }
 
     async _detectServer() {
@@ -2004,7 +2030,7 @@
       // Check if the button in the 'after' state (now registered) exists -> registration was successful
       if( this._checkSubmitButton( true ) ) {
         //this._showMessage( 'Registration successful. :^)' );
-        console.log('Done');
+        println('Registration done');
         this.setStatus( ClientStatus.Done );
         return true;
       }
