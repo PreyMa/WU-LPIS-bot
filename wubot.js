@@ -2146,6 +2146,9 @@
       // Show a red X if there is an error
       const titleSymbol= this.status === ClientStatus.Error ? '❌' : '🛠️';
       document.title= titleSymbol+ ' '+ document.title.substring(document.title.indexOf('L'));
+
+      const showClock= this.status === ClientStatus.Pending || this.status === ClientStatus.Done;
+      this.clock.show( showClock );
     }
   }
 
