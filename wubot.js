@@ -1354,12 +1354,12 @@
 
       this.root= div({}, Style.mainContainer,
         div({}, Style.topBar,
-          this.stateField= div({}, {padding: '5px', borderRadius: '5px'}),
+          this.stateField= div({title: 'Current state'}, {padding: '5px', borderRadius: '5px'}),
           this.lvaField= input({type: 'text', title: 'Course id'}),
           this.timeField= input({type: 'datetime-local', title: 'Registration time'}),
-          this.advancedSettingsButton= button({}, {}, 'Advanced'),
-          this.selectLvaButton= button({}, {}, 'Select Course'),
-          this.startStopButton= button({}, {}, 'Go!')
+          this.advancedSettingsButton= button({title: 'Show advanced settings'}, {}, 'Advanced'),
+          this.selectLvaButton= button({title: 'Select a course'}, {}, 'Select Course'),
+          this.startStopButton= button({title: 'Arm the bot'}, {}, 'Go!')
         ),
         this.advancedSettingsPane= div({}, Style.topBar,
           this.maxRefreshTimeField= input({type: 'number', title: 'Number of seconds to attempt registration', min: 1}),
@@ -1714,7 +1714,7 @@
 
         // Cell with the lva id as a link to the page
         row.insertCell().appendChild(
-          createStyledElement('a', {href: urlToPageId(registration.pageId).toString()}, {},
+          createStyledElement('a', {href: urlToPageId(registration.pageId).toString(), title: 'Go to course page'}, {},
             `${registration.lvaId}`,
             span({}, {fontSize: '0.6rem'}, '🔗')
           )
@@ -1733,7 +1733,7 @@
         }
 
         // Cell with a button for removing a LVA
-        const removeButton= button({}, {}, 'Remove');
+        const removeButton= button({title: 'Remove from schedule'}, {}, 'Remove');
         row.insertCell().appendChild( removeButton );
         removeButton.addEventListener('click', () => this._removeLvaFromTable(registration.lvaId));
 
@@ -2021,7 +2021,7 @@
 
       this.root= div({}, Style.mainContainer,
         div({}, Style.topBar,
-          this.statusField= div({}, {padding: '5px', borderRadius: '5px'})
+          this.statusField= div({title: 'Current state'}, {padding: '5px', borderRadius: '5px'})
         ),
         div({}, {}, 
           'This browser tab is a remote controlled bot instance. '+
