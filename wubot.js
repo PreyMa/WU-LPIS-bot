@@ -1654,11 +1654,22 @@
       this.clock.addEventListener('tick', e => {
         // Only 60 secs left and a course is selected
         if( e.detail.isBefore && e.detail.secs < 60 ) {
+          // Bot is not yet pending
           if( this.registrationMap.size && this.state !== State.Pending && !this._currentlyShowsMessage() ) {
             this._showWarning(
               'You have scheduled a registration where registration starts in less than 60 seconds.' +
               "Press 'Go!' to enable automatic registration!"
             );
+          }
+
+          // Not every registration has a client tab
+          if( this.registrationMap.size && this.state === State.Pending && !this._currentlyShowsMessage()) {
+            if(!this._everyLvaHasPendingClient()) {
+              this._showWarning(
+                'Registration starts in less than 60s but not every scheduled registration has an associated bot tab.' +
+                "Restart the system by clicking 'Stop!' and then 'Go!' again!"
+              );
+            }
           }
         }
       });
@@ -1875,6 +1886,25 @@
       return checkSubmitButton(settings, this.submitButton, useAfterText);
     }
 
+    _everyLvaHasPendingClient() {
+      let hasClient= false;
+      for( const registration of this.registrationMap.values() ) {
+        hasClient= false;
+        for( const client of this.clients.values() ) {
+          hasClient= client.status === ClientStatus.Pending && client.waitsFor( registration.lvaId );
+          if( hasClient ) {
+            break;
+          }
+        }
+
+        if( !hasClient ) {
+          break;
+        }
+      }
+
+      return hasClient;
+    }
+
     _setLvaRow( row, restoreState= false ) {
       if( this.lvaRow ) {
         this.lvaRow.style.backgroundColor= null;
@@ -1960,6 +1990,7 @@
 
       this.clientUuid= uuid;
       this.lastEvent= null;
+      this.status= null;
 
       if( lvaId && registrationTime && !isNaN(registrationTime) ) {
         this.lvaId= lvaId;  
@@ -1982,6 +2013,7 @@
 
     /** @param {ClientStatus} status */
     setStatus(status) {
+      this.status= status;
       const splitIdx= status.text.indexOf(' ');
       this.statusField.innerText= status.text.substring(0,splitIdx);
       this.statusField.title= status.text.substring(splitIdx);
