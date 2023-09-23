@@ -1686,6 +1686,7 @@
         const client= this.clients.get(message.senderUuid);
         if( client ) {
           client.updateStatus( message );
+          this._updatePendingState();
         }
       };
 
@@ -1697,6 +1698,7 @@
         const client= this.clients.get(message.senderUuid);
         if( client ) {
           client.heartbeat();
+          this._updatePendingState();
         }
       };
     }
@@ -1710,6 +1712,7 @@
         this.clients.forEach(client => {
           if( !client.hadEventForMillis(4000) ) {
             client.updateStatus( null );
+            this._updatePendingState();
           }
         });
       }, 1000);
@@ -1737,14 +1740,10 @@
         row.insertCell().innerText= formatTime( new Date(registration.date) );
         
         // Cell with client bots
-        const clientCell= row.insertCell();
-        if( this.clients ) {
-          this.clients.forEach( client => {
-            if( client.waitsFor(registration.lvaId) ) {
-              clientCell.appendChild(client.getRoot());
-            }
-          });
-        }
+        const clientCell= row.insertCell();        
+        this._forEachClientWaitingFor(registration.lvaId, client => {
+          clientCell.appendChild(client.getRoot());
+        });
 
         // Cell with a button for removing a LVA
         const removeButton= button({title: 'Remove from schedule'}, {}, 'Remove');
@@ -1888,23 +1887,77 @@
       return checkSubmitButton(settings, this.submitButton, useAfterText);
     }
 
+    _forEachClientWaitingFor(lvaId, cb) {
+      if(!this.clients) {
+        return false;
+      }
+
+      for( const client of this.clients.values() ) {
+        if( client.waitsFor( lvaId ) ) {
+          if( cb(client) ) {
+            return true;
+          }
+        }
+      }
+
+      return false;
+    }
+
     _everyLvaHasPendingClient() {
       let hasClient= false;
       for( const registration of this.registrationMap.values() ) {
-        hasClient= false;
-        for( const client of this.clients.values() ) {
-          hasClient= client.status === ClientStatus.Pending && client.waitsFor( registration.lvaId );
-          if( hasClient ) {
-            break;
-          }
-        }
-
+        hasClient= this._forEachClientWaitingFor(registration.lvaId, client => client.status === ClientStatus.Pending);
+        
         if( !hasClient ) {
           break;
         }
       }
 
       return hasClient;
+    }
+
+    _updatePendingState() {
+      if( this.state !== State.Pending ) {
+        return;
+      }
+
+      let allLvasSucceeded= true;
+      for( const registration of this.registrationMap.values() ) {
+        let hasPendingClient= false, hasClientWithSuccess= false;
+        this._forEachClientWaitingFor( registration.lvaId, client => {
+          // There is still at least one pending client, that might make it
+          if( client.status === ClientStatus.Pending ) {
+            hasPendingClient= true;
+          }
+
+          // Found a client with success, the rest does not matter for this LVA
+          if( client.status === ClientStatus.Done ) {
+            hasClientWithSuccess= true;
+            return true;
+          }
+        });
+        
+        // The LVA registration did not succeed yet, but there are still pending
+        // clients left -> there is nothing to do here
+        if( hasPendingClient && !hasClientWithSuccess ) {
+          return;
+        }
+
+        // Nothing is left pending, and no client had success -> not all LVAs were
+        // successful
+        if( !hasClientWithSuccess ) {
+          allLvasSucceeded= false;
+        }
+      }
+
+      if( !allLvasSucceeded ) {
+        this._showError( 'Not all registrations were successful.' );
+        this._setState( State.Error );
+        return;
+      }
+
+      this._showMessage( 'Registration successful. :^)' );
+      this._setState( State.Ready );
     }
 
     _setLvaRow( row, restoreState= false ) {
