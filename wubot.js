@@ -1381,9 +1381,8 @@
         ),
         this.clock= new Clock(),
         this.messageField= div({}, Style.messageField,
-          span({}, {},
-            this.clearErrorButton= button({}, {display: 'none', float: 'right'}, 'Close')
-          )
+          span(),
+          this.clearErrorButton= button({title: 'Close error message'}, {display: 'none', float: 'right'}, 'Dismiss')
         )
       );
 
